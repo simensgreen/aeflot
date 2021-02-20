@@ -1,0 +1,6386 @@
+C    **********************
+      SUBROUTINE GEOM
+C     *********************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /BL/ J0,J1,J2,J3,J4,J5,J6,NWAF,NWAFOR,NFUS,NRADX(9)
+     1,NFORX(9),NP,NPODOR(9),NF,NFINOR,NCAN,NCANOR,NDUM(13)
+      COMMON /PARAM/ NBODY,NWING,NTAIL,LBC,THK,NN1,MACH,ALPHA,REFA,
+     1SIDES,REFB,REFC,REFD,REFL,REFX,REFZ
+      COMMON /HEAD/ TITLE1(8),TITLE2(8)
+      COMMON /SEG/ NSEG,NROW(20),NCOL(20),NN2,COSS(20),SINS(20),BT(20)
+     1,NDUM1(20),DUM(140),NCSUM
+      COMMON ARRAY(6000),BLOCK(17600)
+      COMMON /TOLA/ ITT(600),NGRI
+      COMMON /NEWCOM/K1,KWAF,KWAFOR,KRADX(9),KFORX(9),KRAD,MAX,K4,K5,KF(
+     16),KAN(6),KFINOR(6),KANOR(6),KOL,NCPT,LOCP,NDUM2(19),NN3,XCPT,DUM1
+     2(39)
+      COMMON /VELCOM/ NDUM3(5),NN4,EM,PRENT,NDUM4(83)
+      COMMON /PODOR/ K3,K6,NPU,KPADX(9),KPODX(9),NPRADX(9),NPUSOR(9)
+      COMMON /FIELD/ XFIELD(250),YFIELD(250,20),ZFIELD(250,20),KFIELD,
+     1KXF,KYF,FIEL
+      COMMON /ITER/ ITERM,MAXWTR,ITEMAX,GROUND,BET,DIVER,BELOYC,SHEK
+      DIMENSION ABCD(20),NAME1(2)
+      character * 80 alla
+      equivalence (abcd, alla)
+      LOGICAL LBC,THK,TAIL,FIEL,ITEMAX,GROUND,BET,DIVER,BELOYC,SHEK
+      INTEGER THICK,PRENT
+      REAL*8 MACH
+      LBC=.FALSE.
+      THK=.FALSE.
+      EM=-1.d0
+      PRENT=0
+      IH=0
+      EPS1=1.0d-14
+      NCSUM=0
+      NCPT=0
+      NBODY=0
+      NWING=0
+      NTAIL=0
+      NSEG=0
+      KOL=0
+      REFB=1.0d0
+      REFC=1.0d0
+      REFD=1.0d0
+      REFL=1.0d0
+      REFX=0.d0
+      REFZ=0.d0
+      REWIND 9
+      REWIND 12
+      REWIND 11
+      REWIND 10
+      REWIND 2
+      LFIELD=1
+      READ (105,140) TITLE1
+      WRITE (108,160) TITLE1
+      READ (105,140) ABCD
+c      DECODE (72,170,ABCD) J0,J1,J2,J3,J4,J5,J6,NW
+c     1AF,NWAFOR,NFUS,(NRADX(I),NFORX(I),I=1,4),NP,KFIELD,NF,NFINOR,
+c     4NCAN,NCANOR
+      read (alla(1:72),170) J0,J1,J2,J3,J4,J5,J6,NW AF,NWAFOR,NFUS
+     1, NRADX(1), NFORX(1)
+     1, NRADX(2), NFORX(2)
+     1, NRADX(3), NFORX(3)
+     1, NRADX(4), NFORX(4)
+     *,NP,KFIELD,NF,NFINOR, NCAN,NCANOR
+      IF (J2.EQ.0.OR.NFUS.LE.4) GO TO 10
+      READ (105,140) ABCD
+c      DECODE(30,170,ABCD) (NRADX(I),NFORX(I),I=5,9)
+      read(alla(1:30),170) (NRADX(I),NFORX(I),I=5,9)
+  10  READ(105,5) ITEMAX,GROUND,BET,DIVER,BELOYC,SHEK
+  5   FORMAT(L5,5(2X,L5))
+      IF (.NOT.SHEK) GO TO 11
+      NAME1(1)=4HDIRI
+      NAME1(2)=4HGABL
+      NGRI=0
+      WRITE (5) NAME1
+C     WRITE (108,12) NAME1
+C 12  FORMAT (1X,2A4)
+  11  IF (.NOT.ITEMAX) GO TO 7
+      IF (J1.EQ.0.AND.J4.EQ.0.AND.J5.EQ.0) GO TO 6
+      WRITE(108,200)
+c      CALL EXIT
+      stop
+  6   READ (105,140) ABCD
+c      DECODE (3,170,ABCD) ITERM
+      READ (alla(1:3),170) ITERM
+      REWIND 19
+      MAXWTR=ITERM
+      ITERM=ITERM+1
+  7   IF (J3.EQ.0) GOTO 30
+      READ(105,140) ABCD
+c      DECODE(27,170,ABCD) (NPODOR(I),I=1,9)
+      READ(alla(1:27),170) (NPODOR(I),I=1,9)
+      READ (105,140) ABCD
+c      DECODE (54,170,ABCD) (NPRADX(I),NPUSOR(I),I=1,9)
+      READ (alla(1:54),170) (NPRADX(I),NPUSOR(I),I=1,9)
+   30 CONTINUE
+      FIEL=.FALSE.
+      IF (KFIELD.EQ.0) GO TO 31
+      FIEL=.TRUE.
+      READ(105,140) ABCD
+c      DECODE(6,170,ABCD) KXF,KYF
+      READ(alla(1:6),170) KXF,KYF
+  31  CALL CONFIG
+      READ (105,140) TITLE2
+      READ (105,170) LINBC,THICK,PRENT
+      IF (LINBC.GT.0) LBC=.TRUE.
+      IF (LBC.AND.THICK.GT.0) THK=.TRUE.
+      READ (105,140) ABCD
+c      DECODE (72,170,ABCD) K0,K1,K2,K3,K4,K5,K6,KW
+c     1AF,KWAFOR,KFUS,(KRADX(I),KFORX(I),I=1,4)
+      READ (alla(1:72),170) K0,K1,K2,K3,K4,K5,K6,KWAF,KWAFOR,KFUS
+     1 , KRADX(1), KFORX(1)
+     1 , KRADX(2), KFORX(2)
+     1 , KRADX(3), KFORX(3)
+     1 , KRADX(4), KFORX(4)
+      IF(J2.EQ.0.OR.NFUS.LE.4) GO TO 32
+      READ(105,140) ABCD
+c      DECODE(30,170,ABCD) (KRADX(I),KFORX(I),I=5,9)
+      READ(alla(1:30),170) (KRADX(I),KFORX(I),I=5,9)
+  32  TAIL=.FALSE.
+      KRAD=KFUS
+      IF(K4.GT.0.OR.K5.GT.0) TAIL=.TRUE.
+      IF (.NOT.TAIL) GOTO 35
+      READ (105,140) ABCD
+c      DECODE (72,170,ABCD) (KF(I),KFINOR(I),I=1,6),(KAN(I),KANOR(I),I=1,
+c     16)
+      READ (alla(1:36),170) (KF(I),KFINOR(I),I=1,6)
+      READ (alla(37:72),170) (KAN(I),KANOR(I),I=1,6)
+   35 IF (K3.EQ.0) GOTO 40
+      READ (105,140) ABCD
+c      DECODE (54,170,ABCD) (KPADX(I),KPODX(I),I=1,9)
+      READ (alla(1:54),170) (KPADX(I),KPODX(I),I=1,9)
+   40 READ (11) REFA
+      IF (K0.EQ.0) GOTO 50
+      READ (105,150) REFAR,REFB,REFC,REFD,REFL,REFX,REFZ
+      IF (ABS(REFAR).LT.EPS1) REFA=REFAR
+      IF (ABS(REFB).LT.EPS1) REFB=1.0d0
+      IF (ABS(REFC).LT.EPS1) REFC=1.0d0
+      IF (ABS(REFD).LT.EPS1) REFD=1.0d0
+      IF (ABS(REFL).LT.EPS1) REFL=1.0d0
+   50 CONTINUE
+      READ (11) BLOCK
+      IF (K1.EQ.0) GOTO 60
+      CALL NEWORD
+      CALL WNGPAN
+      IH=IH+1
+   60 CONTINUE
+      READ (11) BLOCK
+      READ (11) BLOCK
+      IF (TAIL) GOTO 80
+      IF (K2.EQ.0) GOTO 75
+C     IF (KRADX(1).LE.21) GOTO 70
+C     WRITE (108,190) ; CALL EXIT
+   70 CONTINUE
+      REWIND 11
+      READ (11) REFA
+      READ (11) BLOCK
+      READ (11) BLOCK
+      CALL NEWRAD
+      CALL  BODPAN
+   75 IF (K3.EQ.0) GOTO 130
+      REWIND 11
+      READ(11)REFA
+      READ(11)BLOCK
+      READ(11)BLOCK
+      READ(11)BLOCK
+      CALL NEWRAP
+      CALL PODPAN
+      GO TO 130
+   80 CONTINUE
+      READ (11) BLOCK
+      IF (K4.EQ.0) GOTO 90
+      CALL NUTORD
+      CALL TALPAN
+      IH=IH+NF
+   90 CONTINUE
+      READ (11) BLOCK
+      IF (K5.EQ.0) GOTO 100
+      CALL NUTORD
+      CALL TALPAN
+      IH=IH+NCAN
+  100 CONTINUE
+      KOL1=KOL-IH
+      IF (KOL1.LE.20) GOTO 120
+  110 WRITE (108,180)
+c      CALL EXIT
+      stop
+  120 IF (K2.EQ.0.AND.K3.EQ.0) GOTO 130
+      REWIND 11
+      TAIL=.FALSE.
+      READ (11) REFA
+      READ (11) BLOCK
+      GOTO 60
+  130 CONTINUE
+      KOL1=KOL-IH
+      IF (KOL1.GT.20) GOTO 110
+      REWIND 11
+  135 IF (.NOT.FIEL) GOTO 139
+      I1=-9
+      I2=0
+      NREC=(KXF+9)/10
+      DO 131 N=1,NREC
+       I1=I1+10
+       I2=I2+10
+       READ (105,140) ABCD
+c       DECODE (70,150,ABCD) (XFIELD(I),I=I1,I2)
+       READ (alla(1:70),150) (XFIELD(I),I=I1,I2)
+  131 CONTINUE
+      NAT=201
+      HX=(XFIELD(2)-XFIELD(1))/(NAT-1)
+      XH=XFIELD(1)
+      DO 51 JH=1,NAT
+       XFIELD(JH)=XH+(JH-1)*HX
+   51 CONTINUE
+      NREC=(KYF+9)/10
+      DO 134 N=1,KXF
+       I1=-9
+       I2=0
+       DO 132 NN=1,NREC
+        I1=I1+10
+        I2=I2+10
+        READ (105,140) ABCD
+c        DECODE (70,150,ABCD) (YFIELD(N,I),I=I1,I2)
+        READ (alla(1:70),150) (YFIELD(N,I),I=I1,I2)
+  132  CONTINUE
+       I1=-9
+       I2=0
+       DO 133 NN=1,NREC
+        I1=I1+10
+        I2= I2+10
+        READ (105,140) ABCD
+c        DECODE (70,150,ABCD) (ZFIELD(N,I),I=I1,I2)
+        READ (alla(1:70),150) (ZFIELD(N,I),I=I1,I2)
+  133  CONTINUE
+  134 CONTINUE
+      KXF=NAT
+      DO 52 N=1,KXF
+       YFIELD(N,1)=YFIELD(1,1)
+       ZFIELD(N,1)=ZFIELD(1,1)
+   52 CONTINUE
+    1 WRITE (2) XFIELD,YFIELD,ZFIELD
+      WRITE (2) LFIELD,KXF,KYF
+      IF (LFIELD.EQ.0) GOTO 2
+      IF (LFIELD.NE.0) READ (105,170) LFIELD,KXF,KYF
+      IF (LFIELD.NE.0) GOTO 135
+      GOTO 1
+    2 FIEL=.FALSE.
+      REWIND 2
+  139 RETURN
+  140 FORMAT (20A8)
+  150 FORMAT (10F7.0)
+  160 FORMAT (1H ,20A8)
+  170 FORMAT (24I3)
+  180 FORMAT (1H ,56HERROR -WING AND TAIL HAVE MORE THEN 20 COLUMNS 0F P
+     1ANELS)
+  190 FORMAT (1H ,46HERROR- BODY HAS MORE THEN 20 COLUMNS OF PANELS)
+  200 FORMAT(1H ,81HERROR-YOU MUST NOT CALCULATING THE CONFIGURATION,WHI
+     1CH HAVE THE WING(FIN OR TAIL))
+      END
+C     *******************************************
+      SUBROUTINE PANELB (IP,IQ,J,K,L,NP,AP,JMAX,NFP,MAXFP,KRADFP)
+C     *******************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON XPT(600),YPT(600),ZPT(600),THET(600),DELTA(600),XC(600)
+     1,YC(600),ZC(600),DUM(1200),BLOCK(6900),ZU(600),DUM5(10100)
+      DIMENSION XIN(4), YIN(4), ZIN(4), XI(4), ETA(4)
+      DIMENSION MAXFP(NFP),KRADFP(NFP)
+      REAL*8 NX,NY,NZ
+      EPS1=1.0d-14
+      EPS=1.0d-06
+      J1=J-1
+      K1=K-1
+      ISS=ISUMMA(NFP,MAXFP,KRADFP)
+      J1K1=JMAX*(K1-1)+J1+ISS
+      JK1=JMAX*(K1-1)+J+ISS
+      JK=JMAX*(K-1)+J+ISS
+      J1K=JMAX*(K-1)+J1+ISS
+      XIN(1)=XC(J1K1)
+      XIN(2)=XC(JK1)
+      XIN(3)=XC(JK)
+      XIN(4)=XC(J1K)
+      YIN(1)=YC(J1K1)
+      YIN(2)=YC(JK1)
+      YIN(3)=YC(JK)
+      YIN(4)=YC(J1K)
+      IF(L.EQ.1) GO TO 10
+      ZIN(1)=ZC( J1K1)
+      ZIN(2)=ZC( JK1)
+      ZIN(3)=ZC( JK)
+      ZIN(4)=ZC( J1K)
+      GO TO 20
+   10 ZIN(1)=ZU( J1K1)
+      ZIN(2)=ZU( JK1)
+      ZIN(3)=ZU( JK)
+      ZIN(4)=ZU( J1K)
+   20 CONTINUE
+      T1X=XIN(3)-XIN(1)
+      T2X=XIN(4)-XIN(2)
+      IF (IP.EQ.1) T2X=-T2X
+      T1Y=YIN(3)-YIN(1)
+      T2Y=YIN(4)-YIN(2)
+      IF (IP.EQ.1) T2Y=-T2Y
+      T1Z=ZIN(3)-ZIN(1)
+      T2Z=ZIN(4)-ZIN(2)
+      IF (IP.EQ.1) T2Z=-T2Z
+      NX=T2Y*T1Z-T1Y*T2Z
+      NY=T1X*T2Z-T2X*T1Z
+      NZ=T2X*T1Y-T1X*T2Y
+      IF (ABS(NX).LE.EPS) NX=0.d0
+      IF (ABS(NY).LE.EPS) NY=0.d0
+      IF (ABS(NZ).LE.EPS) NZ=0.d0
+      VN=SQRT(NX*NX+NY*NY+NZ*NZ)
+      IF (ABS(VN).LT.EPS1) GO TO 30
+      VND=1.d0/VN
+      NX=NX*VND
+      NY=NY*VND
+      NZ=NZ*VND
+   30 AVX=0.25d0*(XIN(1)+XIN(2)+XIN(3)+XIN(4))
+      AVY=0.25d0*(YIN(1)+YIN(2)+YIN(3)+YIN(4))
+      AVZ=0.25d0*(ZIN(1)+ZIN(2)+ZIN(3)+ZIN(4))
+      D=NX*(AVX-XIN(1))+NY*(AVY-YIN(1))+NZ*(AVZ-ZIN(1))
+      PD=ABS(D)
+      T=SQRT(T1X*T1X+T1Y*T1Y+T1Z*T1Z)
+      IF (ABS(T).LT.EPS1) GOTO 40
+      TD=1.d0/T
+      T1X=T1X*TD
+      T1Y=T1Y*TD
+      T1Z=T1Z*TD
+   40 T2X=NY*T1Z-NZ*T1Y
+      T2Y=NZ*T1X-NX*T1Z
+      T2Z=NX*T1Y-NY*T1X
+      DO 50 N=1,4
+      XPA=XIN(N)+NX*D
+      YPA=YIN(N)+NY*D
+      ZPA=ZIN(N)+NZ*D
+      D=-D
+      XDIF=XPA-AVX
+      YDIF=YPA-AVY
+      ZDIF=ZPA -AVZ
+      XI(N)=T1X*XDIF+T1Y*YDIF+T1Z*ZDIF
+   50 ETA(N)=T2X*XDIF+T2Y*YDIF+T2Z*ZDIF
+      ETACK=ETA(2)-ETA(4)
+      IF (ABS(ETACK).GT.EPS1) GOTO 60
+      XIO=0.0d0
+      GO TO 70
+   60 XIO=(XI(4)*(ETA(1)-ETA(2))+XI(2)*(ETA(4)-ETA(1)))/(3.d0*ETACK)
+   70 ETAO=-ETA(1)/3.d0
+      XI(1)=XI(1)-XIO
+      XI(2)=XI(2)-XIO
+      XI(3)=XI(3)-XIO
+      XI(4)=XI(4)-XIO
+      ETA(1)=ETA(1)-ETAO
+      ETA(2)=ETA(2)-ETAO
+      ETA(3)=ETA(3)-ETAO
+      ETA(4)=ETA(4)-ETAO
+      XPT(NP)=AVX+T1X*XIO+T2X*ETAO
+      YPT(NP)=AVY+T1Y*XIO+T2Y*ETAO
+      ZPT(NP)=AVZ+T1Z*XIO+T2Z*ETAO
+      DELTA(NP)=0.d0
+      THET(NP)=0.d0
+      RN=SQRT(NY*NY+NZ*NZ)
+      IF (L.EQ.0) GOTO 80
+      SL=-1.0d0
+      IF (L.EQ.2) SL=1.0d0
+      IF (ABS(NX).GT.EPS1) DELTA(NP)=ATAN2(SL*NX,RN)
+      SP=DFLOAT(1-2*IP)
+      IF (ABS(NY).GT.EPS1) THET(NP)=ATAN2(SP*NY,-SP*NZ)
+      GOTO 90
+   80 DELTA(NP)=ATAN2(-NX,RN)
+      THET(NP)=ATAN2(-NY,NZ)
+      IF (ABS(NY).LE.EPS1.AND.NZ.LT.0.0d0) THET(NP)=-3.14159265d0
+   90 CONTINUE
+      AP=0.5d0*(XI(3)-XI(1))*ETACK
+      IF (IP.EQ.1) AP=-AP
+      RETURN
+      END
+C     *******************************************
+      SUBROUTINE PANEL (IP,IQ,J,K,L,NP,AP)
+C     *******************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON XPT(600),YPT(600),ZPT(600),THET(600),DELTA(600),XC(30,20)
+     1,YC(30,20),ZC(30,20),DUM(1200),BLOCK(6900),ZU(30,20)
+     2,DUM2(10100)
+      DIMENSION XIN(4), YIN(4), ZIN(4), XI(4), ETA(4)
+      REAL*8 NX,NY,NZ
+      EPS1=1.0d-14
+      EPS=1.0d-06
+      J1=J-1
+      K1=K-1
+      XIN(1)=XC(J1,K1)
+      XIN(2)=XC(J,K1)
+      XIN(3)=XC(J,K)
+      XIN(4)=XC(J1,K)
+      YIN(1)=YC(J1,K1)
+      YIN(2)=YC(J,K1)
+      YIN(3)=YC(J,K)
+      YIN(4)=YC(J1,K)
+      IF (L.EQ.1) GOTO 10
+      ZIN(1)=ZC(J1,K1)
+      ZIN(2)=ZC(J,K1)
+      ZIN(3)=ZC(J,K)
+      ZIN(4)=ZC(J1,K)
+      GO TO 20
+   10 ZIN(1)=ZU(J1,K1)
+      ZIN(2)=ZU(J,K1)
+      ZIN(3)=ZU(J,K)
+      ZIN(4)=ZU(J1,K)
+   20 CONTINUE
+      T1X=XIN(3)-XIN(1)
+      T2X=XIN(4)-XIN(2)
+      IF (IP.EQ.1) T2X=-T2X
+      T1Y=YIN(3)-YIN(1)
+      T2Y=YIN(4)-YIN(2)
+      IF (IP.EQ.1) T2Y=-T2Y
+      T1Z=ZIN(3)-ZIN(1)
+      T2Z=ZIN(4)-ZIN(2)
+      IF (IP.EQ.1) T2Z=-T2Z
+      NX=T2Y*T1Z-T1Y*T2Z
+      NY=T1X*T2Z-T2X*T1Z
+      NZ=T2X*T1Y-T1X*T2Y
+      IF (ABS(NX).LE.EPS) NX=0.d0
+      IF (ABS(NY).LE.EPS) NY=0.d0
+      IF (ABS(NZ).LE.EPS) NZ=0.d0
+      VN=SQRT(NX*NX+NY*NY+NZ*NZ)
+      IF (ABS(VN).LT.EPS1) GO TO 30
+      VND=1.d0/VN
+      NX=NX*VND
+      NY=NY*VND
+      NZ=NZ*VND
+   30 AVX=0.25d0*(XIN(1)+XIN(2)+XIN(3)+XIN(4))
+      AVY=0.25d0*(YIN(1)+YIN(2)+YIN(3)+YIN(4))
+      AVZ=0.25d0*(ZIN(1)+ZIN(2)+ZIN(3)+ZIN(4))
+      D=NX*(AVX-XIN(1))+NY*(AVY-YIN(1))+NZ*(AVZ-ZIN(1))
+      PD=ABS(D)
+      T=SQRT(T1X*T1X+T1Y*T1Y+T1Z*T1Z)
+      IF (ABS(T).LT.EPS1) GOTO 40
+      TD=1.d0/T
+      T1X=T1X*TD
+      T1Y=T1Y*TD
+      T1Z=T1Z*TD
+   40 T2X=NY*T1Z-NZ*T1Y
+      T2Y=NZ*T1X-NX*T1Z
+      T2Z=NX*T1Y-NY*T1X
+      DO 50 N=1,4
+      XPA=XIN(N)+NX*D
+      YPA=YIN(N)+NY*D
+      ZPA=ZIN(N)+NZ*D
+      D=-D
+      XDIF=XPA-AVX
+      YDIF=YPA-AVY
+      ZDIF=ZPA -AVZ
+      XI(N)=T1X*XDIF+T1Y*YDIF+T1Z*ZDIF
+   50 ETA(N)=T2X*XDIF+T2Y*YDIF+T2Z*ZDIF
+      ETACK=ETA(2)-ETA(4)
+      IF (ABS(ETACK).GT.EPS1) GOTO 60
+      XIO=0.0d0
+      GO TO 70
+   60 XIO=(XI(4)*(ETA(1)-ETA(2))+XI(2)*(ETA(4)-ETA(1)))/(3.d0*ETACK)
+   70 ETAO=-ETA(1)/3.d0
+      XI(1)=XI(1)-XIO
+      XI(2)=XI(2)-XIO
+      XI(3)=XI(3)-XIO
+      XI(4)=XI(4)-XIO
+      ETA(1)=ETA(1)-ETAO
+      ETA(2)=ETA(2)-ETAO
+      ETA(3)=ETA(3)-ETAO
+      ETA(4)=ETA(4)-ETAO
+      XPT(NP)=AVX+T1X*XIO+T2X*ETAO
+      YPT(NP)=AVY+T1Y*XIO+T2Y*ETAO
+      ZPT(NP)=AVZ+T1Z*XIO+T2Z*ETAO
+      DELTA(NP)=0.d0
+      THET(NP)=0.d0
+      RN=SQRT(NY*NY+NZ*NZ)
+      IF (L.EQ.0) GOTO 80
+      SL=-1.0d0
+      IF (L.EQ.2) SL=1.0d0
+      IF (ABS(NX).GT.EPS1) DELTA(NP)=ATAN2(SL*NX,RN)
+      SP=DFLOAT(1-2*IP)
+      IF (ABS(NY).GT.EPS1) THET(NP)=ATAN2(SP*NY,-SP*NZ)
+      GOTO 90
+   80 DELTA(NP)=ATAN2(-NX,RN)
+      THET(NP)=ATAN2(-NY,NZ)
+      IF (ABS(NY).LE.EPS1.AND.NZ.LT.0.0d0) THET(NP)=-3.14159265d0
+   90 CONTINUE
+      AP=0.5d0*(XI(3)-XI(1))*ETACK
+      IF (IP.EQ.1) AP=-AP
+      RETURN
+      END
+C     ***********************************************
+      SUBROUTINE DERIV (X,Y,N,NDA,DA,FD)
+C     ***********************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /COEF/ C(4,50),CC(4,50)
+      DIMENSION X(1), Y(1), FD(1)
+      M1=-1
+      F1=0.d0
+      M=0
+      CALL SCAMP4 (X,Y,N,NDA,M1,DA,F1,C,FD,M)
+      RETURN
+      END
+C     ************************************
+      FUNCTION DERIV2(X,Y,XX)
+C     ************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      DIMENSION X(4), Y(4)
+      DERIV2=0.0d0
+      IF (X(4)-X(3)) 10,70,10
+   10 IF (X(4)-X(2)) 20,70,20
+   20 IF (X(4)-X(1)) 30,70,30
+   30 IF (X(3)-X(2)) 40,70,40
+   40 IF (X(3)-X(1)) 50,70,50
+   50 IF (X(2)-X(1)) 60,70,60
+   60 Q41=(Y(4)-Y(1))/(X(4)-X(1))
+      Q31=(Y(3)-Y(1))/(X(3)-X(1))
+      Q21=(Y(2)-Y(1))/(X(2)-X(1))
+      E=(Q31-Q21)/(X(3)-X(2))
+      D=((Q41-Q21)/(X(4)-X(2))-E)/(X(4)-X(3))
+      C=E-D*(X(3)+X(2)+X(1))
+      DERIV2=2.0d0*(C+3.0d0*D*XX)
+   70 RETURN
+      END
+C     *************************************
+      FUNCTION DERIV1 (X1,Y1,N)
+C     *************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      DIMENSION X(3), Y(3), X1(3), Y1(3)
+      DO 10 I=1,3
+      X(I)=X1(I)
+   10 Y(I)=Y1(I)
+      K=N
+      S=DFLOAT(K)
+      E=Y(1)-Y(2)
+      H=Y(1)-Y(3)
+      A=X(1)-X(2)
+      B=X(1)-X(3)
+      C=A*(X(1)+X(2))
+      DT=B*(X(1)+X(3))
+      C3=(B*E-A*H)/(B*C-A*DT)
+      C2=(E-C3*C)/A
+      K1=IABS(K)
+      DO 20 I=1,3
+      IF (K1-I) 20,30,20
+   20 CONTINUE
+      GO TO 40
+   30 S=X(K1)
+   40 DERIV1=C2+2.0d0*C3*S
+      RETURN
+      END
+C     *****************************************
+      SUBROUTINE CUBIC2 (X,Y,D,C,J)
+C     *****************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      DIMENSION X(2),Y(2),D(2),C(4)
+      X2=X(2)
+      B=X(1)-X2
+      IF (B) 20,10,20
+   10 J=3
+      GO TO 30
+C  20 CALL OVERFL(J)
+   20 A=(Y(1)-Y(2))/B
+      E=X(1)+X2
+      C(4)=(D(1)+D(2)-A-A)/B/B
+      C(3)=(A-D(2))/B-C(4)*(E+X2)
+      C(2)=A-E*C(3)-C(4)*(E*X2+X(1)**2)
+      C(1)=Y(2)-X2*(C(2)+X2*(C(3)+X2*C(4)))
+C     CALL OVERFL(J)
+C     J=3-J
+      J=1
+   30 RETURN
+      END
+C     ***************************************************
+      SUBROUTINE COMCU (DA,DB,S,X,Y,L,M,N,NDA,NDB)
+C     ***************************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /COEF/ C(50),D(50),E(50),DUM(250)
+      DIMENSION S(1), X(1), Y(1)
+      K=N-1
+      KUE=0
+      IF (N-2) 10,20,60
+   10 M=-1
+      GO TO 180
+   20 IF (NDA-1) 50,30,50
+   30 IF (NDB-1) 50,40,50
+   40 S(1)=DA
+      S(2)=DB
+      M=0
+      GO TO 180
+   50 KUE=1
+   60 M=0
+      E(1)=0.0d0
+      C(N)=0.0d0
+      IF (NDA-1) 70,70,80
+   70 D(1)=1.0d0
+      C(1)=0.0d0
+      S(1)=DA
+      GO TO 90
+   80 D(1)=4.0d0
+      C(1)=2.0d0
+      S(1)=6.0d0*(Y(2)-Y(1))/(X(2)-X(1))-DA*
+     1(X(2)-X(1))
+   90 IF (KUE) 120,100,120
+  100 DO 110 I=2,K
+      U=X(I)-X(I-1)
+      V=X(I+1)-X(I)
+      C(I)=U
+      D(I)=2.0d0*(U+V)
+      E(I)=V
+  110 S(I)=3.0d0/(U*V)*(U*U*(Y(I+1)-Y(I))+V*V*(Y(I)-Y(I-1)))
+  120 IF (NDB-1) 130,130,140
+  130 E(N)=0.0d0
+      D(N)=1.0d0
+      S(N)=DB
+      GO TO 150
+  140 E(N)=2.0d0
+      D(N)=4.0d0
+      S(N)=6.0d0*(Y(N)-Y(N-1))/(X(N)-X(N-1))
+     1+DB*(X(N)-X(N-1))
+  150 C(1)=C(1)/D(1)
+      S(1)=S(1)/D(1)
+      DO 160 I=2,N
+      F=D(I)-C(I-1)*E(I)
+      C(I)=C(I)/F
+  160 S(I)=(S(I)-S(I-1)*E(I))/F
+      DO 170 J=1,K
+      I=N-J
+  170 S(I)=S(I)-S(I+1)*C(I)
+  180 RETURN
+      END
+C     ******************************************************
+      SUBROUTINE SCAMP4 (X,Y,N,NDA,NDB,DA,DB,C,S,M)
+C     ******************************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      DIMENSION C(4,1), S(1), X(1), Y(1), Z(4)
+      L=1
+      KK=1
+      D1=DA
+      D2=DB
+      IF (M-12) 20,10,20
+   10 KK=2
+   20 IF (NDA+1) 30,40,50
+   30 D1=DERIV2(X,Y,X)
+      GO TO 50
+   40 D1=DERIV1(X,Y,1)
+   50 NA=IABS(NDA)
+      IF (NDB+1) 60,70,80
+   60 D2=DERIV2(X(N-3),Y(N-3),X(N))
+      GO TO 80
+   70 D2=DERIV1(X(N-2),Y(N-2),3)
+   80 NB=IABS(NDB)
+      CALL COMCU (D1,D2,S,X,Y,L,M,N,NA,NB )
+      IF (M) 160,90,160
+   90 K=N-1
+      DO 150 J=1,K
+      CALL CUBIC2 (X(J),Y(J),S(J),Z,M)
+      IF (M-1) 100,110,100
+  100 M=100*J+M
+      GO TO 160
+  110 GO TO (120,140), KK
+  120 DO 130 I=1,4
+  130 C(I,J)=Z(I)
+      GO TO 150
+  140 L=7*J
+      C(L-6,1)=X(J)
+      C(L-5,1)=X(J+1)
+      C(L-4,1)=3.0d0
+      C(L-3,1)=Z(1)
+      C(L-2,1)=Z(2)
+      C(L-1,1)=Z(3)
+      C(L,1)=Z(4)
+  150 CONTINUE
+      M=0
+  160 RETURN
+      END
+C     ************************
+      SUBROUTINE CONFIG
+C     ************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /BL/ J0,J1,J2,J3,J4,J5,J6,NWAF,NWAFOR,NFUS,NRADX(9)
+     1,NFORX(9),NP,NPODOR(9),NF,NFINOR,NCAN,NCANOR,J2TEST,NW,NC,JPTEST
+     2(9),NDUM
+      COMMON ARRAY(6000),BLOCK(17600)
+      COMMON /PODOR/ K3,K6,NPU,KPADX(9),KPODX(9),NPRADX(9),NPUSOR(9)
+      character * 80 alla
+      equivalence (abcd, alla)
+      COMMON/ITER/ITERM,MAXWTR,ITEMAX,GROUND,BET,DIVER,BELOYC,SHEK
+      COMMON/MAXII/POPMAX(600),H
+      DIMENSION ABCD(20),XAF(30),WAFORG(20,4),WAFORD(20,3,30),TZORD(2
+     10,30),WAFOR(20,30),XFUS(30,9),ZFUS(30,9),FUSARD(30,9),FUSRAD(
+     230,9),SFUS(30,30,18),PODORG(3,9),XPOD(30,9),PODORD(30,9),
+     *ZPUS(30,9),PODRAD(30,9),XPOD1
+     3(30,9),SPUS(30,30,18),FINORG(6,2,4),XFIN(6,30),FINORD(6,2,30),FINX
+     42(6,2,30),FINX3(6,2,30),FINOR(6,30),FINCR(6,30),CANORG(6,2,4),XCAN
+     5(6,30),CANORD(6,2,30),CANOR1(6,2,30),CANORX(6,2,30),CANOR(6,30),
+     6CANCR(6,30),WGG(20)
+     7,TZORD1(20,30),ZCE4(20),XAF1(30),NAME(2)
+      EQUIVALENCE (BLOCK,XAF),(BLOCK(31),WAFORG),(BLOCK(111),WAFORD),(
+     1BLOCK(1911),TZORD),(BLOCK(2511),WAFOR),(BLOCK,XFUS),(BLOCK(271
+     2),ZFUS),(BLOCK(541),FUSARD),(BLOCK(811),FUSRAD),(BLOCK(541),SFU
+     3S),(BLOCK,PODORG),(BLOCK(28),XPOD),(BLOCK(298),ZPUS),
+     *(BLOCK(568),PODORD),(BLOCK(838),PODRAD),(BLOCK(1108
+     4),XPOD1),(BLOCK(1378),SPUS),(BLOCK,FINORG),(BLOCK(49),XFIN),(BLO
+     5CK(229),FINORD),(BLOCK(8560),FINX2),(BLOCK(8920),FINX3),(BLOCK
+     *(8200),
+     6FINOR),(BLOCK(8380),FINCR),(BLOCK,CANORG),(BLOCK(49),XCAN),(BLOCK
+     *(229),CANORD),
+     *(BLOCK(8560),CANOR1),(BLOCK(8920),CANORX),(BLOCK(8200),CA
+     8NOR),(BLOCK(8380),CANCR)
+     9,(BLOCK(7501),TZORD1),(BLOCK(8101),ZCE4),(BLOCK(8121),XAF1)
+      LOGICAL GROUND,ITEMAX,BET,DIVER,BELOYC,SHEK
+      INTEGER PLOT
+      DATA PI/3.14159265d0/
+      REWIND 11
+      REWIND 3
+      JJN=0
+      REWIND 7
+      REFA=1.0d0
+      IF (J0.EQ.0) GO TO 10
+      READ (105,470) ABCD
+c      DECODE (7,480,ABCD) REFA
+      READ (alla(1:7),480) REFA
+   10 WRITE (11) REFA
+      IF (J1.EQ.0) GOTO 160
+      N=IABS(NWAFOR)
+      NREC=(N+9)/10
+      I1=-9
+      I2=0
+      DO 20 NN=1,NREC
+      I1=I1+10
+      I2=I2+10
+      READ (105,470) ABCD
+c      DECODE (70,480,ABCD) (XAF(I),I=I1,I2)
+      READ (alla(1:70),480) (XAF(I),I=I1,I2)
+   20 CONTINUE
+      DO 30 I=1,NWAF
+      READ (105,470) ABCD
+c      DECODE (28,480,ABCD) ( WAFORG(I,J),J=1,4)
+      READ (alla(1:28),480) ( WAFORG(I,J),J=1,4)
+   30 CONTINUE
+      L=1
+      IF (J1.LT.0) GOTO 60
+      I1=-9
+      I2=0
+      NREC1=(NWAF+9)/10
+      DO 31 NNN=1,NREC1
+      I1=I1+10
+      I2=I2+10
+      READ  (105,470) ABCD
+c      DECODE (70,480,ABCD) ( WGG(I),I=I1,I2)
+      READ (alla(1:70),480) (WGG(I),I=I1,I2)
+   31 CONTINUE
+      IF (NWAFOR.LT.0) GO TO 80
+      DO 50 NN=1,NWAF
+      I1=-9
+      I2=0
+      DO 40 N1=1,NREC
+      I1=I1+10
+      I2=I2+10
+      READ (105,470) ABCD
+c      DECODE (70,480,ABCD) (TZORD(NN,I),I=I1,I2)
+      READ (alla(1:70),480) (TZORD(NN,I),I=I1,I2)
+   40 CONTINUE
+   50 CONTINUE
+      GO TO 61
+  80  L=2
+   60 DO 70 I=1,NWAF
+      DO 70 K=1,N
+   70 TZORD(I,K)=0.d0
+  61  DO 100 NN=1,NWAF
+      DO 100 K=1,L
+      I1=-9
+      I2=0
+      DO 90 N1=1,NREC
+      I1=I1+10
+      I2=I2+10
+      READ (105,470) ABCD
+c      DECODE (70,480,ABCD) (WAFORD(NN,K,I),I=I1,I2)
+      READ (alla(1:70),480) (WAFORD(NN,K,I),I=I1,I2)
+   90 CONTINUE
+  100 CONTINUE
+      DO 110 NN=1,NWAF
+      DO 110 K=1,N
+      WAFOR(NN,K)=WAFORD(NN,1,K)
+      IF (L.EQ.1) GO TO 91
+      WAFOR(NN,K)=(WAFORD(NN,1,K)-WAFORD(NN,2,K))/2.d0
+      TZORD(NN,K)=(WAFORD(NN,1,K)+WAFORD(NN,2,K))/2.d0+TZORD(NN,K)
+   91 IF (J1.LT.0) GO TO 110
+      TZORD(NN,K)=TZORD(NN,K)-XAF(K)*TAN(WGG(NN)*PI/180.)
+  110 CONTINUE
+      IF(.NOT.DIVER) GO TO 111
+      IF(.NOT.BELOYC) GO TO 111
+      WRITE (108,114) ((TZORD(I,J),J=1,N),I=1,NWAF)
+      READ(3) JJN,NAME,KZ,KX
+C     OUTPUT JJN,KZ,KX,NWAF,NWAFOR
+      WRITE(108,113)NAME
+  113 FORMAT(2X,2A4)
+      READ(3)((TZORD1(I,J),J=1,KX),I=1,KZ)
+C     WRITE(108,114) (ZCE4(II),II=1,KZ)
+C     WRITE(108,114) (XAF1(JJ),JJ=1,KX)
+      WRITE(108,114) ((TZORD1(I,J),J=1,KX),I=1,KZ)
+  114 FORMAT(2X,10F10.5)
+      DO 112 I=1,KZ
+      DO 112 J=1,KX
+  112 TZORD(I,J)=TZORD(I,J)+TZORD1(I,J)/WAFORG(I,4)*100.d0
+      WRITE(108,114) ((TZORD(I,J),J=1,N),I=1,NWAF)
+      REWIND 3
+  111 IF (NWAFOR.LT.0) GO TO 130
+      DO 120 NN=1,NWAF
+      DO 120 K=1,N
+  120 WAFORD(NN,2,K)=WAFORD(NN,1,K)
+  130 CONTINUE
+      NWAFOR=IABS(NWAFOR)
+      NW=NWAFOR
+      J1=IABS(J1)
+      DO 150 I=1,NWAF
+      E=.01d0*WAFORG(I,4)
+      E3=WAFORG(I,3)
+      DO 140 J=1,NWAFOR
+      WAFORD (I,1,J)=E*WAFORD(I,1,J)+E3+TZORD(I,J)
+      WAFORD (I,2,J)=-E*WAFORD(I,2,J)+E3+TZORD(I,J)
+  140 WAFORD(I,3,J)=WAFORG(I,1)+E*XAF(J)
+  150 CONTINUE
+      IF(.NOT.DIVER) GO TO 160
+      NAME(1)=4HWING
+      NAME(2)=4H    
+      JJN=JJN+1
+      DO 151 I=1,NWAF
+  151 ZCE4(I)=WAFORG(I,2)
+      DO 152 I=1,NWAFOR
+  152 XAF1(I)=XAF(I)/100.d0
+      WRITE(7) JJN,NAME,NWAF,NWAFOR
+      WRITE(7) ZCE4,XAF1
+      REWIND 7
+  160 WRITE (11) BLOCK
+      IF (J2.EQ.0) GOTO 290
+      IF (GROUND) READ(105,480)H
+      J2TEST=3
+      IF (J2.EQ.-1.AND.J6.EQ.-1) J2TEST=1
+      IF (J2.EQ.-1.AND.J6.EQ.0) J2TEST=2
+      IF (J6.EQ.1) J2TEST=1
+      J2=1
+      DO 280 NFU=1,NFUS
+      NRAD=NRADX(NFU)
+      NFUSOR=NFORX(NFU)
+      N=NFUSOR
+      NREC=(N+9)/10
+      I1=-9
+      I2=0
+      DO 170 N1=1,NREC
+      I1=I1+10
+      I2=I2+10
+      READ (105,470) ABCD
+c      DECODE (70,480,ABCD) (XFUS(I,NFU),I=I1,I2)
+      READ (alla(1:70),480) (XFUS(I,NFU),I=I1,I2)
+  170 CONTINUE
+      IF (J2TEST.NE.2) GOTO 190
+      I1=-9
+      I2=0
+      DO 180 N1=1,NREC
+      I1=I1+10
+      I2=I2+10
+      READ (105,470) ABCD
+c      DECODE (70,480,ABCD) (ZFUS(I,NFU),I=I1,I2)
+      READ (alla(1:70),480) (ZFUS(I,NFU),I=I1,I2)
+  180 CONTINUE
+      GO TO 210
+  190 DO 200 I=1,N
+  200 ZFUS(I,NFU)=0.d0
+  210 IF (J2TEST.NE.3) GOTO 250
+      NCARD=(NRAD+9)/10
+      DO 240 LN=1,N
+      DO 230 K=1,2
+      KK=K+(NFU-1)*2
+      II=10
+      I1=-9
+      I2=0
+      DO 220 NN=1,NCARD
+      IF (NN.EQ.NCARD) II=MOD(NRAD,10)
+      IF (II.EQ.0) II=10
+      I1=I1+10
+      I2=I2+II
+      READ (105,470) ABCD
+c      DECODE (70,480,ABCD) (SFUS(I,LN,KK),I=I1,I2)
+      READ (alla(1:70),480) (SFUS(I,LN,KK),I=I1,I2)
+  220 CONTINUE
+  230 CONTINUE
+  240 CONTINUE
+      GO TO 280
+  250 I1=-9
+      I2=0
+      DO 260 N1=1,NREC
+      I1=I1+10
+      I2=I2+10
+      READ (105,470) ABCD
+c      DECODE (70,480,ABCD) (FUSARD(I,NFU),I=I1,I2)
+      READ (alla(1:70),480) (FUSARD(I,NFU),I=I1,I2)
+  260 CONTINUE
+      DO 270 I=1,N
+C 270 FUSRAD(I,NFU)=SQRT(FUSARD(I,NFU)/PI)
+  270 FUSRAD(I,NFU)=FUSARD(I,NFU)
+  280 CONTINUE
+  290 WRITE (11) BLOCK
+      IF (J3.EQ.0) GOTO 330
+      DO 328 NN=1,NP
+      NPRAD=NPRADX(NN)
+      NPUS=NPUSOR(NN)
+      IF(NPODOR(NN).EQ.0) JPTEST(NN)=1
+      IF(NPODOR(NN).EQ.1) JPTEST(NN)=2
+      IF(NPODOR(NN).EQ.-1) JPTEST(NN)=3
+      NPODOR(NN)=IABS(NPODOR(NN))
+      N=NPUS
+      NREC=(N+9)/10
+      READ (105,470) ABCD
+c      DECODE (21,480,ABCD) (PODORG(I,NN),I=1,3)
+      READ (alla(1:21),480) (PODORG(I,NN),I=1,3)
+      I1=-9
+      I2=0
+      DO 300 N1=1,NREC
+      I1=I1+10
+      I2=I2+10
+      READ (105,470)  ABCD
+c      DECODE (70,480,ABCD) (XPOD(I,NN),I=I1,I2)
+      READ (alla(1:70),480) (XPOD(I,NN),I=I1,I2)
+  300 CONTINUE
+      IF(JPTEST(NN).NE.2) GO TO 305
+      I1=-9
+      I2=0
+      DO 304 N1=1,NREC
+      READ (105,470) ABCD
+      I1=I1+10
+      I2=I2+10
+c      DECODE (70,480,ABCD) (ZPUS(I,NN),I=I1,I2)
+      READ (alla(1:70),480) (ZPUS(I,NN),I=I1,I2)
+  304 CONTINUE
+      GOTO 310
+  305 DO 306 I=1,N
+  306 ZPUS(I,NN)=0.d0
+  310 IF (JPTEST(NN).NE.3) GOTO 314
+      NPCARD=(NPRAD+9)/10
+      DO 313 LN=1,NPUS
+      DO 312 K=1,2
+      KK=K+(NN-1)*2
+      II=10
+      I1=-9
+      I2=0
+      DO 311 NNN=1,NPCARD
+      IF (NNN.EQ.NPCARD) II=MOD(NPRAD,10)
+      IF (II.EQ.0) II=10
+      I1=I1+10
+      I2=I2+II
+      READ (105,470) ABCD
+c      DECODE (70,480,ABCD) (SPUS(I,LN,KK),I=I1,I2)
+      READ (alla(1:70),480) (SPUS(I,LN,KK),I=I1,I2)
+  311 CONTINUE
+  312 CONTINUE
+  313 CONTINUE
+      GO TO 315
+  314 CONTINUE
+      I1=-9
+      I2=0
+      DO 320 N1=1,NREC
+      I1=I1+10
+      I2=I2+10
+      READ (105,470) ABCD
+c      DECODE (70,480,ABCD) (PODORD(I,NN),I=I1,I2)
+      READ (alla(1:70),480) (PODORD(I,NN),I=I1,I2)
+  320 CONTINUE
+      DO 321 I=1,N
+      PODRAD(I,NN)=PODORD(I,NN)
+  321 CONTINUE
+  315 CONTINUE
+      DO 329 K=1,N
+      XPOD1(K,NN)=XPOD(K,NN)+PODORG(1,NN)
+  329 CONTINUE
+  328 CONTINUE
+  330 WRITE (11) BLOCK
+      IF (J4.EQ.0) GOTO 380
+      N=IABS(NFINOR)
+      NREC=(N+9)/10
+      DO 336 NN=1,NF
+      I1=-9
+      I2=0
+      READ (105,470) ABCD
+c      DECODE (56,480,ABCD) ((FINORG(NN,I,J),J=1,4),I=1,2)
+      READ (alla(1:56),480) ((FINORG(NN,I,J),J=1,4),I=1,2)
+      DO 331 NNT=1,NREC
+      I1=I1+10
+      I2=I2+10
+      READ (105,470) ABCD
+c      DECODE (70,480,ABCD) (XFIN(NN,I),I=I1,I2)
+      READ (alla(1:70),480) (XFIN(NN,I),I=I1,I2)
+  331 CONTINUE
+      I1=-9
+      I2=0
+      DO 332 NNT=1,NREC
+      I1=I1+10
+      I2=I2+10
+      READ (105,470) ABCD
+c      DECODE (70,480,ABCD) (FINORD(NN,1,J),J=I1,I2)
+      READ (alla(1:70),480) (FINORD(NN,1,J),J=I1,I2)
+  332 CONTINUE
+      IF (NFINOR.LT.0) GOTO 333
+      DO 340 J=1,N
+      FINCR(NN,J)=0.d0
+      FINOR(NN,J)=FINORD(NN,1,J)
+  340 CONTINUE
+      FINX2(NN,1,J)=FINORD(NN,1,J)
+      GO TO 336
+  333 CONTINUE
+      I1=-9
+      I2=0
+      DO 334 NNT=1,NREC
+      I1=I1+10
+      I2=I2+10
+      READ (105,470) ABCD
+c      DECODE (70,480,ABCD) (FINX2(NN,1,J),J=I1,I2)
+      READ (alla(1:70),480) (FINX2(NN,1,J),J=I1,I2)
+  334 CONTINUE
+      DO 335 J=1,N
+      FINOR(NN,J)=(FINORD(NN,1,J)-FINX2(NN,1,J))/2.d0
+  335 CONTINUE
+      FINCR(NN,J)=(FINORD(NN,1,J)+FINX2(NN,1,J))/2.d0
+  336 CONTINUE
+      DO 337 NN=1,NF
+      DO 338 K=1,2
+      I=3-K
+      E=.01d0*FINORG(NN,I,4)
+      E2=FINORG(NN,I,3)
+      DO 339 J=1,N
+      FINORD(NN,I,J)=E*FINORD(NN,1,J)+E3
+      FINX2(NN,I,J)=-E*FINORD(NN,1,J)+E3
+  339 CONTINUE
+      FINX3(NN,I,J)=FINORG(NN,I,1)+E*XFIN(NN,J)
+  338 CONTINUE
+  337 CONTINUE
+  380 WRITE (11) BLOCK
+      IF (J5.EQ.0) GOTO 460
+      N=IABS(NCANOR)
+      NREC=(N+9)/10
+      DO 420 NN=1,NCAN
+      I1=-9
+      I2=0
+      READ (105,470) ABCD
+c      DECODE (56,480,ABCD) ((CANORG(NN,I,J),J=1,4),I=1,2)
+      READ (alla(1:56),480) ((CANORG(NN,I,J),J=1,4),I=1,2)
+      DO 418 NNT=1,NREC
+      I1=I1+10
+      I2=I2+10
+      READ (105,470) ABCD
+c      DECODE (70,480,ABCD) (XCAN(NN,I),I=I1,I2)
+      READ (alla(1:70),480) (XCAN(NN,I),I=I1,I2)
+  418 CONTINUE
+      I1=-9
+      I2=0
+      DO 419 NNT=1,NREC
+      I1=I1+10
+      I2=I2+10
+      READ (105,470) ABCD
+c      DECODE (70,480,ABCD) (CANORD(NN,1,J),J=I1,I2)
+      READ (alla(1:70),480) (CANORD(NN,1,J),J=I1,I2)
+  419 CONTINUE
+      IF (NCANOR.LT.0) GOTO 400
+      DO 390 J=1,N
+      CANCR(NN,J)=0.d0
+      CANOR(NN,J)=CANORD(NN,1,J)
+  390 CANOR1(NN,1,J)=CANORD(NN,1,J)
+      GO TO 420
+  400 I1=-9
+      I2=0
+      DO 409 NNT=1,NREC
+      I1=I1+10
+      I2=I2+10
+      READ (105,470) ABCD
+c      DECODE (70,480,ABCD) (CANOR1(NN,1,J),J=I1,I2)
+      READ (alla(1:70),480) (CANOR1(NN,1,J),J=I1,I2)
+  409 CONTINUE
+      DO 410 J=1,N
+      CANOR(NN,J)=(CANORD(NN,1,J)-CANOR1(NN,1,J))/2.d0
+  410 CANCR(NN,J)=(CANORD(NN,1,J)+CANOR1(NN,1,J))/2.d0
+  420 CONTINUE
+      DO 450 NN=1,NCAN
+      DO 440 K=1,2
+      I=3-K
+      E=.01d0*CANORG(NN,I,4)
+      E3=CANORG(NN,I,3)
+      DO 430 J=1,N
+      CANORD(NN,I,J)=E*CANORD(NN,1,J)+E3
+      CANOR1(NN,I,J)=-E*CANOR1(NN,1,J)+E3
+  430 CANORX(NN,I,J)=CANORG(NN,I,1)+E*XCAN(NN,J)
+  440 CONTINUE
+  450 CONTINUE
+  460 WRITE (11) BLOCK
+      REWIND 11
+      RETURN
+  470 FORMAT (20A8)
+  480 FORMAT (10F7.0)
+      END
+C     ******************************
+      SUBROUTINE NEWORD
+C     ******************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /BL/ J0,J1,J2,J3,J4,J5,J6,NWAF,NWAFOR,NDUM(46)
+      COMMON /NEWCOM/ K1,KWAF,KWAFOR,KRADX(9),KFORX(9),KRAD,MAX,
+     1NDUM1(48),NN1,DUM(40)
+      COMMON /COEF/ C(4,50),CC(4,50)
+      COMMON ARRAY(6000),BLOCK(17600)
+      DIMENSION XAF(30),WAFORG(20,4),WAFORD(20,3,30),TZORD(20,30),TZ
+     1ORK(20,30),WAFORK(20,30),DZCDX(20,30),DZTDX(20,30),DZCDXK(20,3
+     20),WAFOR(20,30),DZTDXK(20,30),TORD(30),ZORD(30),DZC(30),DZT(
+     330),RHO(20),A(20),B(20),R(20),XAT(30),XAFK(30)
+      EQUIVALENCE (BLOCK,XAF),(BLOCK(31),WAFORG),(BLOCK(111),WAFORD),
+     1(BLOCK(1911),TZORD),(BLOCK(2511),WAFOR),(BLOCK(3111),TZORK),(BL
+     2OCK(3711),WAFORK),(BLOCK(4311),DZCDX),(BLOCK(4911),DZCDXK),(BLO
+     3CK(5511),DZTDXK),(BLOCK(6111),XAFK),(BLOCK(6141),RHO),(BLOCK(61
+     461),A),(BLOCK(6181),B),(BLOCK(6201),R),(BLOCK(6221),TORD),(BLO
+     5CK(6251),ZORD),(BLOCK(6281),DZC),(BLOCK(6311),DZT),(BLOCK(6341)
+     6,XAT),(BLOCK(6901),DZTDX)
+      IF (K1.EQ.3) READ (105,220) (RHO(N),N=1,NWAF)
+      IF (KWAFOR.EQ.0) GOTO 10
+      READ (105,220) (XAFK(K),K=1,KWAFOR)
+      GOTO 30
+   10 KWAFOR=NWAFOR
+      DO 20 K=1,NWAFOR
+   20 XAFK(K)=XAF(K)
+   30 CONTINUE
+      NWAR=NWAFOR-1
+      DO 210 N=1,NWAF
+      NDA=-1
+      DA=0.d0
+      DO 40 L=1,NWAFOR
+      ZORD(L)=TZORD(N,L)
+   40 TORD(L)=WAFOR(N,L)
+      IF (J1.LT.0) GOTO 60
+      CALL DERIV (XAF,ZORD,NWAFOR,NDA,DA,DZC)
+      DO 50 L=1,NWAR
+      DO 50 M=1,4
+   50 CC(M,L)=C(M,L)
+      GOTO 80
+   60 DO 70 L=1,NWAR
+      DZC(L)=0.d0
+      DO 70 M=1,4
+   70 CC(M,L)=0.d0
+   80 NWA=NWAFOR
+      IF (K1.LT.3) GOTO 100
+      NWA=NWAR
+      NDA=0
+      R(N)=SQRT(2.d0*RHO(N))
+      SAF2=SQRT(XAF(2))
+      SAF3=SQRT(XAF(3))
+      CON2=TORD(2)/XAF(2)-R(N)/SAF2
+      CON3=TORD(3)/XAF(3)-R(N)/SAF3
+      DX=XAF(3)-XAF(2)
+      A(N)=(CON2*XAF(3)-CON3*XAF(2))/DX
+      B(N)=(CON3-CON2)/DX
+      DA=R(N)/(2.d0*SAF2)+A(N)+2.d0*B(N)*XAF(2)
+      DO 90 L=1,NWAR
+      XAT(L)=XAF(L+1)
+   90 TORD(L)=TORD(L+1)
+      GOTO 120
+  100 DO 110 L=1,NWA
+  110 XAT(L)=XAF(L)
+  120 CALL DERIV (XAT,TORD,NWA,NDA,DA,DZT)
+      DO 130 L=1,NWAFOR
+      DZCDX(N,L)=DZC(L)
+  130 DZTDX(N,L)=DZT(L)
+      IF (K1.LT.3) GOTO 150
+      DZTDX(N,1)=900.d0
+      DO 140 L=2,NWAFOR
+  140 DZTDX(N,L)=DZT(L-1)
+  150 CONTINUE
+      IF (KWAFOR.EQ.0) GOTO 210
+      TZORK(N,1)=TZORD(N,1)
+      DZCDXK(N,1)=DZCDX(N,1)
+      WAFORK(N,1)=WAFOR(N,1)
+      DZTDXK(N,1)=DZTDX(N,1)
+      KI=2
+      DO 200 J=1,NWAR
+      DO 180 K=KI,KWAFOR
+      IF (XAFK(K).GT.XAF(J+1)) GOTO 190
+      XJ=XAFK(K)
+      TZORK(N,K)=CC(1,J)+XJ*(CC(2,J)+XJ*(CC(3,J)+XJ*CC(4,J)))
+      DZCDXK(N,K)=CC(2,J)+XJ*(2.d0*CC(3,J)+3.d0*XJ*CC(4,J))
+      L=J
+      XL=XJ
+      IF (K1.LT.3) GOTO 170
+      IF (J.GT.1) GOTO 160
+      SXJ=SQRT(XJ)
+      DZTDXK(N,K)=R(N)/(2.d0*SXJ)+A(N)+2.d0*B(N)*XJ
+      WAFORK(N,K)=R(N)*SXJ+XJ*(A(N)+B(N)*XJ)
+      GOTO 180
+  160 XL=XJ-XAF(1)
+      L=J-1
+  170 WAFORK(N,K)=C(1,L)+XL*(C(2,L)+XL*(C(3,L)+XL*C(4,L)))
+      DZTDXK(N,K)=C(2,L)+XL*(2.d0*C(3,L)+3.d0*XL*C(4,L))
+  180 CONTINUE
+  190 KI=K
+  200 CONTINUE
+  210 CONTINUE
+      RETURN
+  220 FORMAT (10F7.0)
+      END
+C    ***************************
+      SUBROUTINE WNGPAN
+C    ***************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /BL/ J0,J1,J2,J3,J4,J5,J6,NWAF,NWAFOR,NDUM(46)
+      COMMON /PARAM/NBODY,NWING,NTAIL,LBC,THK,NN1,MACH,ALPHA,REFA,
+     *SIDES,DUM(6)
+      COMMON /NEWCOM/ KL,KWAF,KWAFOR,KRADX(9),KFORX(9),KRAD,MAX,
+     1KK(26),KOL,NCPT,LOCPT,NDUM1(19),NN2,XCPT,DUM1(19),YKN(20)
+      COMMON /SEG/ NSEG,NROW(20),NCOL(20),NN3,COSS(20),SINS(20),BTE(20),
+     1NWT(20),SPNW(20),XLEW(20),BLE(20),ZLEW(20),XS(20),YS(20),ZS(20)
+     2,NCSUM
+      COMMON ARRAY(6000),BLOCK(17600)
+      COMMON /VELCOM/ NDUM2(5),NN4,EMM,PRENT,NDUM3(83)
+      COMMON /FIELD/ DUM2(10250),NDUM4(3),FIEL
+      DIMENSION XPT(600),YPT(600),ZPT(600),THET(600),DELTA(600),XC(
+     130,20),YC(30,20),ZC(30,20),ZU(30,20),AREA(600),XE(600),XAF(3
+     20),WAFORG(20,4),WAFORD(20,3,30),TZORK(20,30),WAFORK(20,30),DZ
+     3CDX(20,30),DZTDX(20,30),DZCDXK(20,30),DZTDXK(20,30),SLOPE(600)
+     4,XAFK(30),XK(20),YK(20),ZK(20),CK(20),CD(20),BL(20),TH(20),
+     5BT(20),CHORD(600)
+      EQUIVALENCE (BLOCK,XAF),(BLOCK(31),WAFORG),(BLOCK(111),WAFORD),
+     1(BLOCK(2511),DZTDX),(BLOCK(3111),TZORK),(BLOCK(3711),WAFORK),(B
+     2LOCK(4311),DZCDX),(BLOCK(4911),DZCDXK),(BLOCK(5511),DZTDXK),(BL
+     3OCK(6111),XAFK),(BLOCK(6141),XK),(BLOCK(6161),YK),(BLOCK(6181),
+     4ZK),(BLOCK(6201),CK),(BLOCK(6221),BL),(BLOCK(6261),TH),(BLOCK(
+     56281),BT),(BLOCK(6301),CHORD),(BLOCK(6901),SLOPE,ZU),(ARRAY,XPT
+     6),(ARRAY(601),YPT),(ARRAY(1201),ZPT),(ARRAY(1801),THET),(ARRAY
+     7(2401),DELTA),(ARRAY(3001),XC),(ARRAY(3601),YC),(ARRAY(4201),ZC
+     8),(ARRAY(4801),AREA),(ARRAY(5401),XE)
+      LOGICAL LBC,THK,FIEL
+      INTEGER PRENT
+      REAL*8 MACH
+      XIN(X1,Y1,X2,Y2,Y)=X1+(X2-X1)*(Y-Y1)/(Y2-Y1)
+      EPS=1.0d-6
+      EPS1=1.0d-14
+      IF (KWAF.EQ.0) GOTO 10
+      READ (105,280) (YK(K),K=1,KWAF)
+      GOTO 30
+   10 KWAF=NWAF
+      DO 20 K=1,KWAF
+   20 YK(K)=WAFORG(K,2)
+  30  CONTINUE
+      KO=2
+      KOL=KWAF
+      KI=1
+      NI=1
+      NW1=NWAF-1
+      NEDG=1
+      DO 31 K=1,20
+      YKN(K)=YK(K)
+   31 CONTINUE
+      NSEG=1
+      NC=0
+      NJ=0
+      NP=0
+      IF (PRENT.GE.0) GOTO 40
+      WRITE (108,290)
+      WRITE (108,300)
+   40 DO 220 N=1,NW1
+      M=N+1
+      DELY=WAFORG(N+1,2)-WAFORG(N,2)
+      IF (ABS(DELY).LT.EPS1) GOTO 210
+      DELX=WAFORG(N+1,1)-WAFORG(N,1)
+      DELZ=WAFORG(N+1,3)-WAFORG(N,3)
+      DELC=WAFORG(N+1,4)-WAFORG(N,4)
+      DELYD=1.d0/DELY
+      TH(N)=ATAN2(DELZ,DELY)
+      BL(N)=DELX*DELYD*COS(TH(N))
+      BT(N)=(DELX+DELC)*DELYD*COS(TH(N))
+      IF (N.EQ.1) GOTO 60
+      IF (BL(N).NE.BL(N-1)) GOTO 50
+      IF (BT(N).NE.BT(N-1)) GOTO 50
+      IF (TH(N).NE.TH(N-1)) GOTO 50
+      GOTO 70
+   50 NSEG=NSEG+1
+      NEDG=KO
+   60 CONTINUE
+      SINS(NSEG)=SIN(TH(N))
+      COSS(NSEG)=COS(TH(N))
+      BLE(NSEG)=BL(N)
+      BTE(NSEG)=BT(N)
+      IF(LBC) GO TO 61
+      IF(NWT(NSEG).EQ.-2) GO TO 70
+  61  NWT(NSEG)=0
+  70  CONTINUE
+      DO 80 K=KO,KWAF
+      IF (YK(K).GE.WAFORG(M,2)) GOTO 90
+   80 CONTINUE
+   90 KO=K
+      DO 200 K=KI,KO
+      IF(K.NE.KI) NCSUM=NCSUM+1
+      XK(K)=XIN(WAFORG(NI,1),WAFORG(NI,2),WAFORG(M,1),WAFORG(M,2),YK(K))
+      ZK(K)=XIN(WAFORG(NI,3),WAFORG(NI,2),WAFORG(M,3),WAFORG(M,2),YK(K))
+      CK(K)=XIN(WAFORG(NI,4),WAFORG(NI,2),WAFORG(M,4),WAFORG(M,2),YK(K))
+      CL=CK(K)/100.d0
+      L=1
+      SJ=1.d0
+  100 CONTINUE
+      DO 150 J=1,KWAFOR
+      XC(J,K)=XK(K)+CL*XAFK(J)
+      YC(J,K)=YK(K)
+      ZC(J,K)=ZK(K)
+      IF (LBC) GOTO 110
+      ZCAM=XIN(TZORK(NI,J),WAFORG(NI,2),TZORK(M,J),WAFORG(M,2),YK(K))
+      ZTHK=XIN(WAFORK(NI,J),WAFORG(NI,2),WAFORK(M,J),WAFORG(M,2),YK(K))
+      ZC(J,K)=ZK(K)+CL*(ZCAM+SJ*ZTHK)
+      IF (L.EQ.1) ZU(J,K)=ZC(J,K)
+  110 IF (K.EQ.KI) GOTO 150
+      K1=K-1
+      NJ=NJ+1
+      IF (J.EQ.1) GOTO 150
+      J1=J-1
+      NC=NC+1
+      NP=NP+1
+      IP=1
+      IF (SJ.LT.0.0d0) IP=0
+      IQ=0
+      IF (.NOT.LBC) CALL PANEL (IP,IQ,J,K,L,NP,AP)
+      AREA(NP)=AP
+      CHORD(NP)=0.d0
+      IF (PRENT.GE.0) GOTO 130
+      IF (.NOT.LBC.AND.L.EQ.1) GOTO 120
+      WRITE (108,310)NP,XC(J1,K1),YK(K1),ZC(J1,K1),XC(J,K1),YK(K1),ZC(J,
+     1K1),XC(J1,K),YK(K),ZC(J1,K),XC(J,K),YK(K),ZC(J,K)
+      GOTO 130
+  120 WRITE (108,310)NP,XC(J1,K1),YK(K1),ZU(J1,K1),XC(J,K1),YK(K1),ZU(J,
+     1K1),XC(J1,K),YK(K),ZU(J1,K),XC(J,K),YK(K),ZU(J,K)
+  130 CONTINUE
+      CR=XC(J,K1)-XC(J1,K1)
+      CT=XC(J,K)-XC(J1,K)
+      RI=(1.d0+CT/(CR+CT))/3.d0
+      RO=1.d0-RI
+      XLE=RI*XC(J1,K)+RO*XC(J1,K1)
+      XTE=RI*XC(J,K)+RO*XC(J,K1)
+      CHORD(NP)=XTE-XLE
+      SPN=SQRT((YK(K)-YK(K1))*(YK(K)-YK(K1))+(ZK(K)-ZK(K1))*(ZK(
+     1K)-ZK(K1)))
+      SPNW(NCSUM)=SPN
+      IF (J.EQ.2) XLEW(NCSUM)=XLE
+      YLE=RI*YK(K)+RO*YK(K1)
+      ZLE=RI*ZK(K)+RO*ZK(K1)
+      IF (J.EQ.2) ZLEW(NCSUM)=ZLE
+      IF (LBC) GOTO 140
+      IF (L.EQ.1.AND.J.EQ.KWAFOR) ZTU=ZPT(NP)
+      IF (L.EQ.1.OR.J.NE.KWAFOR) GOTO 150
+      XS(K1)=XPT(NP)
+      YS(K1)=YPT(NP)
+      ZS(K1)=(ZPT(NP)+ZTU)*.5d0
+      XS(K1)=XTE
+      YS(K1)=YLE
+      ZTU=RI*ZU(J,K)+RO*ZU(J,K1)
+      ZTL=RI*ZC(J,K)+RO*ZC(J,K1)
+      ZS(K1)=(ZTU+ZTL)/2.d0
+      GOTO 150
+  140 CONTINUE
+      XPT(NC)=XLE
+      XE(NC)=XPT(NC)
+      YPT(NC)=YLE
+      ZPT(NC)=ZLE
+      AREA(NP)=.5d0*SPN*(CR+CT)
+      THET(NC)=TH(N)
+      DZCDX(K1,J)=XIN(DZCDXK(NI,J),WAFORG(NI,2),DZCDXK(M,J),WAFO
+     1RG(M,2),YPT(NC))
+      IF (J.EQ.2) DZCDX(K1,1)=XIN(DZCDXK(NI,1),WAFORG(NI,2),DZCDX
+     1K(M,1),WAFORG(M,2),YPT(NC))
+      DZTDX(K1,J)=XIN(DZTDXK(NI,J),WAFORG(NI,2),DZTDXK(M,J),WAFO
+     1RG(M,2),YPT(NC))
+      SLOPE(NJ)=DZTDX(K1,J)
+      DELTA(NC)=DZCDX(K1,J1)
+      IF (J.NE.KWAFOR) GOTO 150
+      NC=NC+1
+      XPT(NC)=XTE-EPS
+      XE(NC)=XPT(NC)
+      YPT(NC)=YPT(NC-1)
+      ZPT(NC)=ZPT(NC-1)
+      IF (.NOT.LBC) ZPT(NC)=ZPT(NC)+(XPT(NC)+EPS-XPT(NC- 1))*DELTA(NC-1)
+     1/SQRT(1- DELTA(NC-1)*DELTA(NC-1))
+      ZTE=0.d0
+      DELTA(NC)=DZCDX(K1,J)
+      THET(NC)=TH(N)
+  150 CONTINUE
+      IF (LBC) GOTO 160
+      IF (SJ.LT.0.0d0) GOTO 160
+      SJ=-1.0d0
+      L=2
+      GOTO 100
+  160 CONTINUE
+      IF (K.EQ.KI) GOTO 200
+      IF (.NOT.LBC) GOTO 200
+      IF (KL.EQ.3) GOTO 170
+      DZTDX(K1,1)=XIN(DZTDXK(NI,1),WAFORG(NI,2),DZTDXK(M,1),WAFO
+     1RG(M,2),YPT(NC))
+      GOTO 190
+  170 NPJ=NP-J1
+      SLE=-DZTDX(K1,2)
+      DO 180 I=2,J1
+  180 SLE=SLE-(DZTDX(K1,I)+DZTDX(K1,I+1))*CHORD(NPJ+I)/CHORD(NPJ+1)
+      DZTDX(K1,1)=SLE
+  190 NJJ=NJ-J1
+      SLOPE(NJJ)=DZTDX(K1,1)
+  200 CONTINUE
+      NROW(NSEG)=J1
+      NCOL(NSEG)=KO-NEDG
+      NCPT=NC
+      IF (NCPT.GT.600) GOTO 260
+      NWING=NP
+      NI=M
+      KI=KO
+      GOTO 220
+  210 KO=KO+1
+      NI=NI+1
+      BL(N)=0.d0
+      BT(N)=0.d0
+      TH(N)=0.d0
+      KI=KI+1
+      IF(LBC) GO TO 220
+      NWT(NSEG+1)=-2
+  220 CONTINUE
+      IF (PRENT.GE.0) GOTO 250
+      WRITE (108,320)
+      IF (LBC) WRITE (108,330)
+      IF (.NOT.LBC) WRITE (108,340)
+      DO 230 NP=1,NCPT
+      IF (LBC) WRITE (108,350)NP,XPT(NP),YPT(NP),ZPT(NP),THET(NP),DELTA(
+     1NP),SLOPE(NP)
+      IF (.NOT.LBC)WRITE (108,350) NP,XPT(NP),YPT(NP),ZPT(NP),THE
+     1T(NP),DELTA(NP)
+  230 CONTINUE
+      WRITE(108,380)
+      WRITE(108,360)
+      DO 240 NP=1,NWING
+  240 WRITE (108,370) NP,AREA(NP),CHORD(NP)
+  250 CONTINUE
+      WRITE (9) ARRAY,CHORD,SLOPE
+      REWIND 1
+      GOTO 270
+  260 WRITE (108,390)
+c      CALL EXIT
+      stop
+  270 RETURN
+  280 FORMAT (10F7.0)
+  290 FORMAT (1H ,9X,35HWING PANEL CORNER POINT COORDINATES/10X,86H1 AND
+     1 3 INDICATE WING PANEL LEADING-EDGE POINTS, 2 AND 4 INDICATE TRAIL
+     2ING-EDGE POINTS)
+  300 FORMAT (1H ,5X,5HPANEL,4(8X,1HX,8X,1HY,8X,1HZ)/20X,3(1H1,8X),3(1H2
+     1,8X),3(1H3,8X),3(1H4,8X)//)
+  310 FORMAT (1H ,4X,I3,4X,12F9.5)
+  320 FORMAT (1H ,1X,48HWING PANEL CONTROL POINTS AND INCLINATION ANGLES
+     1)
+  330 FORMAT (1H ,5HPOINT,8X,1HX,10X,1HY,10X,1HZ,10X,5HTHETA,6X,6HCAMBER
+     1,5X,9HTHICKNESS/15X,3(2HCP,9X),10X,5HSLOPE,8X,5HSLOPE//)
+  340 FORMAT (1H ,5HPOINT,8X,1HX,10X,1HY,10X,1HZ,10X,5HTHETA,6X,5HDELTA/
+     115X,3(2HCP,9X)//)
+  350 FORMAT (1H ,1X,I3,4X,6F11.5)
+  360 FORMAT (1H ,5HPANEL,6X,4HAREA,8X,5HCHORD)
+  370 FORMAT (1H ,1X,I3,4X,2F11.5)
+  380 FORMAT (1H ,9X,27HWING PANEL AREAS AND CHORDS)
+  390 FORMAT (51H  ERROR - NUMBER OF WING CONTROL POINTS EXCEEDS 600)
+      END
+C     *****************************
+      SUBROUTINE NEWRAD
+C     *****************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /BL/ J0,J1,J2,J3,J4,J5,J6,NWAF,NWAFOR,NFUS,NRADX(9)
+     1,NFORX(9),NDUM(14),J2TEST,NDUM1(12)
+      COMMON /NEWCOM/ KL,KWAF,KWAFOR,KRADX(9),KFORX(9),KFUS,MAX
+     1,NDUM2(48),NN1,DUM1(40)
+      COMMON/ITER/ ITERM,MAXWTR,ITEMAX,GROUND,BET,DIVER,BELOYC,SHEK
+      COMMON/MAXII/POPMAX(600),H
+      COMMON ARRAY(4800),DUM(1200),BLOCK(17600)
+      DIMENSION XFUS(30,9),ZFUS(30,9),FUSARD(30,9),FUSRAD(30,9),SFUS
+     1(30,30,18),ANSIN(30),ANCOS(30),PHIN(30),PHIK(30),XB(30),YB(30
+     2,30),ZB(30,30),YF(30),ZF(30)
+      EQUIVALENCE (BLOCK,XFUS),(BLOCK(271),ZFUS),(BLOCK(541),FUSARD),
+     1(BLOCK(811),FUSRAD),(BLOCK(541),SFUS),(ARRAY,YB),(ARRAY(1801),Z
+     2B),(ARRAY(3601),XB),(ARRAY(3661),ANSIN),(ARRAY(3691),ANCOS),(A
+     3RRAY(3721),PHIN),(ARRAY(3751),PHIK)
+      LOGICAL NEWPHI,ITEMAX,GROUND,BET,DIVER,BELOYC,SHEK
+      XIN(X1,Y1,X2,Y2,Y)=X1+(X2-X1)*(Y-Y1)/(Y2-Y1)
+      EPS=1.0d-6
+      EPS1=1.0d-14
+      NEWPHI=.FALSE.
+      M=1
+      KFUS=NFUS
+      KTEST=0
+      RADD=1.d0/57.2957795d0
+      REWIND 12
+      DO 110 NFU=1,NFUS
+      NRAD=NRADX(NFU)
+      KRAD=KRADX(NFU)
+      IF (J2TEST.EQ.3.AND.KRAD.EQ.0) KTEST=1
+      IF (KRAD.EQ.0) KRAD=NRAD
+C     IF (KRAD.GT.20) GOTO 130
+      IF (KRAD.LT.0) NEWPHI=.TRUE.
+      KRAD=IABS(KRAD)
+      KRADX(NFU)=KRAD
+      NFUSOR=NFORX(NFU)
+      FANG=DFLOAT(2*(KRAD-1))
+      DELE=6.2831853d0/FANG
+      IF (NEWPHI) READ (105,160) (PHIK(K),K=1,KRAD)
+      DO 30 K=1,KRAD
+      E=DFLOAT(K-1)
+      IF (NEWPHI) GOTO 10
+      PHIR=E*DELE
+      GOTO 20
+   10 PHIR=PHIK(K)*RADD
+   20 PHIK(K)=PHIR
+      IF (J2TEST.EQ.3) GOTO 30
+      PHIR4=PHIR+4.712389d0
+      ANSIN(K)=SIN(PHIR4)
+      ANCOS(K)=COS(PHIR4)
+   30 CONTINUE
+      KK=1+(NFU-1)*2
+      NF=NFU
+      K2=KK+1
+      DO 100 N=1,NFUSOR
+      IF (N.GT.1) M=M+1
+      IF (M.GT.60) GOTO 120
+      XB(N)=XFUS(N,NF)
+      IF (J2TEST.EQ.3) GOTO 50
+      RAD=FUSRAD(N,NF)
+      CAM=ZFUS(N,NF)+H
+      DO 40 K=1,KRAD
+      YB(N,K)=RAD*ANCOS(K)
+   40 ZB(N,K)=RAD*ANSIN(K)+CAM
+      GO TO 100
+   50 CONTINUE
+      KI=2
+      PHIN(1)=0.d0
+      YB(N,1)=SFUS(1,N,KK)
+      ZB(N,1)=SFUS(1,N,K2)+H
+      YF(1)=YB(N,1)
+      ZF(1)=ZB(N,1)
+      ZC=(SFUS(1,N,K2)+SFUS(NRAD,N,K2)+2.d0*H)/2.d0
+      DO 90 NN=2,NRAD
+      IF (KTEST.EQ.1) GOTO 80
+      YF(NN)=SFUS(NN,N,KK)
+      ZF(NN)=SFUS(NN,N,K2)-ZC+H
+      N1=NN-1
+      IF (ABS(YF(NN)).LT.EPS1.AND.ABS(ZF(NN)).LT.EPS1) GOTO 80
+      PHIN(NN)=ATAN2(YF(NN),-ZF(NN))
+      DO 60 K=KI,KRAD
+      IF (PHIK(K).GT.PHIN(NN)) GO TO 70
+    1 YB(N,K)=XIN(YF(N1),PHIN(N1),YF(NN),PHIN(NN),PHIK(K))
+      ZB(N,K)=XIN(ZF(N1),PHIN(N1),ZF(NN),PHIN(NN),PHIK(K))+ZC
+   60 CONTINUE
+   70 IF (ABS(PHIK(K)-PHIN(NN)).LT.EPS) GO TO 1
+      KI=K
+      GO TO 90
+   80 YB(N,NN)=SFUS(NN,N,KK)
+      ZB(N,NN)=SFUS(NN,N,K2)+H
+   90 CONTINUE
+  100 CONTINUE
+      MAX=M
+      WRITE (12) XB,YB,ZB
+  110 CONTINUE
+      GO TO 150
+  120 WRITE (108,180)
+      GOTO 140
+  130 WRITE (108,170)
+c  140 CALL EXIT
+  140 stop
+  150 RETURN
+  160 FORMAT (10F7.0)
+  170 FORMAT (1H ,39HERROR - BODY HAS MORE THEN 20 MERIDIANS)
+  180 FORMAT (1H ,44HERROR - BODY HAS MORE THEN 60 AXIAL STATIONS)
+      END
+C     **********************************
+      SUBROUTINE BODPAN
+C     **********************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /BL/ NDUM(9),NFUS,NRADX(9),NFORX(9),NNP,NDUM1(26)
+      COMMON/LBMAX/NAKRAD(9)
+      COMMON /PARAM/NBODY,NWING,NTAIL,LBC,THK,NN1,MACH,ALPHA,REFA,
+     *SIDES,DUM(6)
+      COMMON /NEWCOM/ KL,KWAF,KWAFOR,KRADX(9),KFORX(9),KFUS,MAX
+     1,NDUM2(48),NN2,DUM1(40)
+      COMMON ARRAY(6000),BLOCK(17600)
+      COMMON /BTHET/ THETA(600)
+      COMMON /VELCOM/ NDUM3(5),NN3,EMM,PRENT,NDUM4(83)
+      COMMON/PODOR/ K3,K6,NPQ,KPADX(9),KPODX(9),NPODX(9),NPUS(9)
+      COMMON /ITER/ ITERM,MAXWTR,ITEMAX,GROUND,BET,DIVER,BELOYC,SHEK
+      DIMENSION XB(30),YB(30,30),ZB(30,30),XJ(60),AREA(600),XPT(600
+     1),YPT(600),ZPT(600),THET(600),DELTA(600),XC( 600 ),YC( 600 )
+     2,ZC( 600 ),XFUS(30,9)
+      EQUIVALENCE (BLOCK,XFUS),(BLOCK(271),YB),(BLOCK(2071),ZB),(BLOC
+     1K(3871),XB),(ARRAY,XPT),(ARRAY(601),YPT),(ARRAY(1201),ZPT),(AR
+     2RAY(1801),THET),(ARRAY(2401),DELTA),(ARRAY(3001),XC),(ARRAY(360
+     31),YC),(ARRAY(4201),ZC),(ARRAY(4801),AREA)
+      INTEGER PRENT
+      REAL*8 MACH
+      LOGICAL LBC,THK,NAKRAD,ITEMAX,GROUND,BET,DIVER,BELOYC,SHEK
+      XIN(X1,Y1,X2,Y2,Y)=X1+(X2-X1)*(Y-Y1)/(Y2-Y1)
+      REWIND 12
+      IF (PRENT.GE.0) GOTO 10
+      WRITE (108,180)
+      WRITE (108,190)
+   10 CONTINUE
+      IP=0
+      IQ=0
+      J=1
+      L=0
+      NP=0
+      DO 100 NFU=1,NFUS
+      JMAX=KFORX(NFU)
+      NFUSOR=NFORX(NFU)
+      KRAD=KRADX(NFU)
+      KRAD=IABS(KRAD)
+      IF (KRAD.EQ.0) KRAD=NRADX(NFU)
+      READ (12) XB,YB,ZB
+      IF (JMAX.EQ.0) GOTO 20
+      READ (105,170) (XJ(K),K=1,JMAX)
+      GOTO 40
+   20 JMAX=NFORX(NFU)
+      KFORX(NFU)=JMAX
+      KRADX(NFU)=KRAD
+      DO 30 K=1,JMAX
+   30 XJ(K)=XFUS(K,NFU)
+   40 CONTINUE
+      ISS=ISUMMA(NFU,KFORX,KRADX)
+      DO 50 K=1,KRAD
+      JK=JMAX*(K-1)+J+ISS
+      XC(JK)=XB(1)
+      YC(JK)=YB(1,K)
+   50 ZC( JK)=ZB(1,K)
+      DO 90 JJ=2,JMAX
+      J1=J
+      J=J+1
+      DO 80 M=2,NFUSOR
+      M1=M-1
+      IF (XB(M).LT.XJ(JJ)) GO TO 80
+      DO 70 K=1,KRAD
+      JK=JMAX*(K-1)+J+ISS
+      XC(JK)=XJ(JJ)
+      YC(JK)=XIN(YB(M1,K),XB(M1),YB(M,K),XB(M),XJ(JJ))
+      ZC( JK)=XIN(ZB(M1,K),XB(M1),ZB(M,K),XB(M),XJ(JJ))
+      IF (K.EQ.1) GOTO 70
+      K1=K-1
+      NP=NP+1
+      CALL PANELB(IP,IQ,J,K,L,NP,AP,JMAX,NFU,KFORX,KRADX)
+      IF (PRENT.GE.0) GO TO 60
+      J1K1=JMAX*(K1-1)+J1+ISS
+      JK1=JMAX*(K1-1)+J+ISS
+      J1K=JMAX*(K-1)+J1+ISS
+      JK=JMAX*(K-1)+J+ISS
+      WRITE (108,200) NP,XC( J1K1),YC( J1K1),ZC( J1K1),XC( JK1),YC( JK1)
+     1,ZC( JK1),XC( J1K),YC( J1K),ZC( J1K),XC( JK),YC( JK),ZC( JK)
+   60 AREA(NP)=AP
+   70 CONTINUE
+      GO TO 90
+   80 CONTINUE
+   90 CONTINUE
+      J=J+1
+  100 CONTINUE
+      NBODY=NP
+      IF (JK.GT.600.AND.NNP.EQ.0) GO TO 150
+      IF(PRENT.GE.0) GOTO 130
+      WRITE (108,210)
+      WRITE (108,220)
+      DO 110 NP=1,NBODY
+      WRITE (108,230) NP,XPT(NP),YPT(NP),ZPT(NP)
+  110 CONTINUE
+      WRITE (108,240)
+      WRITE (108,250)
+      DO 120 NP=1,NBODY
+  120 WRITE (108,230) NP,AREA(NP),DELTA(NP),THET(NP)
+  130 CONTINUE
+      DO 140 NP=1,NBODY
+  140 THETA(NP)=THET(NP)
+      WRITE (9) ARRAY
+      IF(.NOT.ITEMAX) GO TO 6
+      WRITE(19) ARRAY
+   6  REWIND 12
+      GOTO 160
+  150 WRITE (108,260)
+c      CALL EXIT
+      stop
+  160 RETURN
+  170 FORMAT (10F7.0)
+  180 FORMAT(1H ,9X,36H BODY PANEL CORNER POINT COORDINATES/10X,86H1 AND
+     1 3 INDICATE BODY PANEL LEADING-EDGE POINTS, 2 AND 4 INDICATE TRAIL
+     2ING-EDGE POINTS)
+  190 FORMAT (1H ,5X,5HPANEL,4(8X,1HX,8X,1HY,8X,1HZ)/20X,3(1H1,8X),3(1H2
+     1,8X),3(1H3,8X),3(1H4,8X)//)
+  200 FORMAT (1H ,4X,I3,4X,12F9.5)
+  210 FORMAT (1H ,1X,36HBODY PANEL CONTROL POINT COORDINATES)
+  220 FORMAT (1H ,5HPOINT,6X,1HX,10X,1HY,10X,1HZ/15X,3(2HCP,9X)//)
+  230 FORMAT (1H ,1X,I3,4X,3F11.5)
+  240 FORMAT (1H ,4X,39HBODY PANEL AREAS AND INCLINATION ANGLES)
+  250 FORMAT (1H ,5HPANEL,6X,4HAREA,7X,5HDELTA,6X,5HTHETA//)
+  260 FORMAT (4X,54HERROR - NUMBER OF BODY PANEL CORNER POINTS EXCEEDS 6
+     *00)
+      END
+C     ***********************
+      SUBROUTINE NEWRAP
+C     ***********************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /BL/ J0,J1,J2,J3,J4,J5,J6,NDUM(21),NP,NPODOR(9),NDUM1(7)
+     1,JPTEST(9),NDU
+      COMMON ARRAY(6000),BLOCK(17600)
+      COMMON /PARAM/NBODY,NWING,NTAIL,LBC,THK,NN1,MACH,ALPHA,REFA,
+     *SIDES,DUM(6)
+      COMMON /NEWCOM/ NDUM2(12),KFORX(9),KFUS,MAX,NDUM3(48),NN2,DUM1(40)
+      COMMON /PODOR/ K3,K6,NNP,KPADX(9),KPODX(9),NPRADX(9),NPUSOR(9)
+      DIMENSION PODORG(3,9),XPOD(30,9),PODORD(30,9),XPOD1(30,9),ANSIN
+     1(30),ANCOS(30),PHIK(30),XP(30),YP(30,30),ZP(30,30),PHIN(30)
+     2,YF(30),ZF(30),SPUS(30,30,18),ZPUS(30,9),PODRAD(30,9)
+      EQUIVALENCE (BLOCK,PODORG),(BLOCK(28),XPOD),(BLOCK(298),ZPUS)
+     *,(BLOCK(568),PODORD),(BLOCK(838),PODRAD),(BLOCK
+     1(1108),XPOD1),(BLOCK(1378),SPUS),(ARRAY,YP),(ARRAY(1801),ZP),
+     2(ARRAY(3601),XP),(ARRAY(3661),ANSIN),(ARRAY(3691),ANCOS),(ARRAY(37
+     321),PHIN),(ARRAY(3751),PHIK)
+      LOGICAL LBC,THK,NEWPHI
+      REAL*8 MACH
+      XIN(X1,Y1,X2,Y2,Y)=X1+(X2-X1)*(Y-Y1)/(Y2-Y1)
+      EPS1=1.0d-14
+      EPS=1.0d-6
+      NEWPHI=.FALSE.
+      M=1
+      NNP=NP
+      KTEST=0
+      IF(J2.EQ.0) GO TO 66
+      DO 5 JK=1,KFUS
+    5 M=M+KFORX(JK)
+  66  RADD=1.d0/57.2957795d0
+      REWIND 12
+      DO 45 NPU=1,NP
+      NPRAD=NPRADX(NPU)
+      KPAD=KPADX(NPU)
+      IF (JPTEST(NPU).EQ.3.AND.KPAD.EQ.0) KTEST=1
+      IF (KPAD.EQ.0) KPAD=NPRAD
+C     IF (KPAD.GT.20) GOTO 60
+      IF (KPAD.LT.0) NEWPHI=.TRUE.
+      KPAD=IABS(KPAD)
+      KPADX(NPU)=KPAD
+      NPOD=NPUSOR(NPU)
+      FANG=DFLOAT(2*(KPAD-1))
+      DELE=6.2831853d0/FANG
+      IF (NEWPHI) READ (105,90) (PHIK(K),K=1,KPAD)
+      DO 10 K=1,KPAD
+      E=DFLOAT(K-1)
+      IF (NEWPHI) GOTO 6
+      PHIR=E*DELE
+      GOTO 7
+    6 PHIR=PHIK(K)*RADD
+    7 PHIK(K)=PHIR
+      IF (JPTEST(NPU).EQ.3) GOTO 10
+      PHIR4=PHIR+4.712389d0
+      ANSIN(K)=SIN(PHIR4)
+      ANCOS(K)=COS(PHIR4)
+   10 CONTINUE
+      KK=1+(NPU-1)*2
+      K2=KK+1
+      NFP=NPU
+      DO 40 N=1,NPOD
+      IF (N.GT.1) M=M+1
+      IF (M.GT.60) GOTO 50
+      XP(N)=XPOD1(N,NPU)
+      IF (JPTEST(NPU).EQ.3) GOTO 30
+      RAD=PODRAD(N,NPU)
+      CAM=PODORG(3,NPU)+ZPUS(N,NPU)
+      CAN=PODORG(2,NPU)
+      DO 20 K=1,KPAD
+      YP(N,K)=RAD*ANCOS(K)+CAN
+      ZP(N,K)=RAD*ANSIN(K)+CAM
+   20 CONTINUE
+      GOTO 40
+   30 CONTINUE
+      KI=2
+      PHIN(1)=0.d0
+      YP(N,1)=SPUS(1,N,KK)
+      ZP(N,1)=SPUS(1,N,K2)
+      YF(1)=YP(N,1)
+      ZF(1)=ZP(N,1)
+      ZC=(SPUS(1,N,K2)+SPUS(NPRAD,N,K2))/2.d0
+      DO 38 NN=2,NPRAD
+      IF (KTEST.EQ.1) GOTO 36
+      YF(NN)=SPUS(NN,N,KK)
+      ZF(NN)=SPUS(NN,N,K2)-ZC
+      N1=NN-1
+      IF (ABS(YF(NN)).LT.EPS1.AND.ABS(ZF(NN)).LT.EPS1) GOTO 36
+      PHIN(NN)=ATAN2(YF(NN),-ZF(NN))
+      DO 32 K=KI,KPAD
+      IF (PHIK(K).GT.PHIN(NN)) GOTO 34
+   31 YP(N,K)=XIN(YF(N1),PHIN(N1),YF(NN),PHIN(NN),PHIK(K))+PODORG(2,
+     1NPU)
+      ZP(N,K)=XIN(ZF(N1),PHIN(N1),ZF(NN),PHIN(NN),PHIK(K))+ZC
+     1+PODORG(3,NPU)
+   32 CONTINUE
+   34 IF (ABS(PHIK(K)-PHIN(NN)).LT.EPS) GOTO 31
+      KI=K
+      GOTO 38
+   36 YP(N,NN)=SPUS(NN,N,KK)+PODORG(2,NPU)
+      ZP(N,NN)=SPUS(NN,N,K2)+PODORG(3,NPU)
+   38 CONTINUE
+      YP(N,1)=YP(N,1)+PODORG(2,NPU)
+      ZP(N,1)=ZP(N,1)+PODORG(3,NPU)
+   40 CONTINUE
+      MAX=M
+      WRITE (12) XP,YP,ZP
+   45 CONTINUE
+      GOTO 80
+   50 WRITE (108,110)
+      GOTO 70
+C  60 WRITE (108,100)
+c   70 CALL EXIT
+   70 stop
+   80 RETURN
+   90 FORMAT (10F7.0)
+C 100 FORMAT (1H ,39HERROR - BODY HAS MORE THEN 20 MERIDIANS)
+  110 FORMAT (1H ,44HERROR - BODY HAS MORE THEN 60 AXIAL STATIONS)
+      END
+C     ************************
+      SUBROUTINE PODPAN
+C     ************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /BL/ J0,J1,J2,NDUM(25),NP,NPODOR(9),NDUM1(17)
+      COMMON /PARAM/NBODY,NWING,NTAIL,LBC,THK,NN1,MACH,ALPHA,REFA,
+     *SIDES,DUM(6)
+      COMMON /NEWCOM/ NDUM2(3),KRADX(9),KFORX(9),KFUS,MAX,NDUM3(48),NN2
+     *,DUM1(40)
+      COMMON ARRAY(6000),BLOCK(17600)
+      COMMON /BTHET/ THETA(600)
+      COMMON /LBMAX/NAKRAD(9)
+      COMMON /VELCOM/ NDUM4(5),NN3,EMM,PRENT,NDUM5(83)
+      COMMON /PODOR/ K3,K6,NNP,KPADX(9),KPODX(9),NPODX(9),NPUS(9)
+      DIMENSION XB(30),YB(30,30),ZB(30,30),XJ(90),AREA(600),XPT(600),
+     1YPT(600),ZPT(600),THET(600),DELTA(600),XC(600),YC(600),ZC(6
+     200),XPOD(30,9),XPOD1(30,9)
+      EQUIVALENCE (BLOCK(28),XPOD),(BLOCK(181),YB),(BLOCK(1921),ZB),(BLO
+     1CK(3721),XB),(ARRAY,XPT),(ARRAY(601),YPT),(ARRAY(1201),ZPT),(ARR
+     2AY(1801),THET),(ARRAY(2401),DELTA),(ARRAY(3001),XC),(ARRAY(3601
+     3),YC),(ARRAY(4201),ZC),(ARRAY(4801),AREA),(BLOCK(1108),
+     4XPOD1(1,1))
+      INTEGER PRENT,XKPADX(9)
+      LOGICAL LBC,THK,NAKRAD
+      REAL*8 MACH
+      XIN(X1,Y1,X2,Y2,Y)=X1+(X2-X1)*(Y-Y1)/(Y2-Y1)
+      NNP=NP
+      REWIND 12
+      IF (PRENT.GE.0) GOTO 10
+      WRITE (108,180)
+      WRITE (108,190)
+   10 CONTINUE
+      IF (NBODY.EQ.0) GOTO 11
+      REWIND 9
+      IF (NWING.NE.0) READ (9)
+      READ (9) ARRAY
+   11 IP=0
+      IQ=0
+      J=1
+      JJS=0
+      ISIGM=0
+      NK=NBODY
+      IF(J2.EQ.0) GO TO 102
+      DO 15 JK=1,KFUS
+      JJS=JJS+KFORX(JK)
+  15  ISIGM=ISIGM+KFORX(JK)*(KRADX(JK)-1)
+      JJS=JJS+ISIGM
+  102 CONTINUE
+      DO 100 NPU=1,NP
+      NPOD=NPUS(NPU)
+      JMAX=KPODX(NPU)
+      NPUSOR=NPOD
+      KRAD=KPADX(NPU)
+      KRAD=IABS(KRAD)
+      IF(KRAD.EQ.0) KRAD=NPODX(NPU)
+      READ (12) XB,YB,ZB
+      NAKRAD(NPU)=.FALSE.
+      IF(ABS(YB(1,1)).LE.1.0d-14) NAKRAD(NPU)=.TRUE.
+      IF (JMAX.EQ.0) GOTO 20
+      READ (105,170) (XJ(K),K=1,JMAX)
+      DO 22 K=1,JMAX
+  22  XJ(K)=XJ(K)+XB(1)
+      GOTO 40
+   20 JMAX=NPOD
+      KPODX(NPU)=JMAX
+      DO 30 K=1,JMAX
+   30 XJ(K)=XPOD1(K,NPU)
+   40 CONTINUE
+      KK1=KRAD
+      KRADD=KRAD*2-1
+      KK=KK1
+      IF (NAKRAD(NPU)) KRADD=KRAD
+      XKPADX(NPU)=KRADD
+      ISS=ISUMMA(NPU,KPODX,XKPADX)
+      IS1=ISS+JJS
+      DO 50 K=1,KRADD
+      JK=JMAX*(K-1)+J+IS1
+      XC(JK)=XB(1)
+      YC(JK)=YB(1,K)
+      ZC(JK)=ZB(1,K)
+      IF (K.LE.KRAD) GOTO 50
+      KK=KK-1
+      YC(JK)=2.d0*YB(1,1)-YB(1,KK)
+      JKK=JMAX*(KK-1)+J+IS1
+      ZC(JK)=ZC(JKK)
+   50 CONTINUE
+      DO 90 JJ=2,JMAX
+      J1=J
+      J=J+1
+      JS1=J+IS1
+      DO 80 M=2,NPOD
+      M1=M-1
+      IF (XB(M).LT.XJ(JJ)) GOTO 80
+      KK=KK1
+      DO 70 K=1,KRADD
+      JK=JMAX*(K-1)+J+IS1
+      XC(JK)=XJ(JJ)
+      YC(JK)=XIN(YB(M1,K),XB(M1),YB(M,K),XB(M),XJ(JJ))
+      ZC(JK)=XIN(ZB(M1,K),XB(M1),ZB(M,K),XB(M),XJ(JJ))
+      IF (K.LE.KRAD) GOTO 55
+      KK=KK-1
+      JKK=JMAX*(KK-1)+J+IS1
+      YC(JK)=2.d0*YC(JS1)-YC(JKK)
+      ZC(JK)=ZC(JKK)
+   55 IF (K.EQ.1) GOTO 70
+      K1=K-1
+      NK=NK+1
+      JJJ=J+JJS
+      CALL PANELB(IP,IQ,JJJ,K,L,NK,AP,JMAX,NPU,KPODX,XKPADX)
+      IF (PRENT.GE.0) GOTO 60
+      J1K1=JMAX*(K1-1)+J1+IS1
+      JK1=JMAX*(K1-1)+J+IS1
+      J1K=JMAX*(K-1)+J1+IS1
+      WRITE (108,200)NK,XC(J1K1),YC(J1K1),ZC(J1K1),XC(JK1),YC(JK
+     11),ZC(JK1),XC(J1K),YC(J1K),ZC(J1K),XC(JK),YC(JK),ZC(JK)
+   60 AREA(NK)=AP
+   70 CONTINUE
+      GOTO 90
+   80 CONTINUE
+   90 CONTINUE
+      J=J+1
+  100 CONTINUE
+      NBBODY=NBODY+1
+      NBODY=NK
+      IF (JK.GT.600.AND.J2.NE.0) GO TO 150
+      IF (JK.GT.600.AND.J2.EQ.0) GO TO 155
+      IF (PRENT.GE.0) GOTO 130
+      WRITE (108,210)
+      WRITE (108,220)
+      DO 110 NK=NBBODY,NBODY
+      WRITE (108,230) NK,XPT(NK),YPT(NK),ZPT(NK)
+  110 CONTINUE
+      WRITE (108,240)
+      WRITE (108,250)
+      DO 120 NK=NBBODY,NBODY
+  120 WRITE (108,230) NK,AREA(NK),DELTA(NK),THET(NK)
+  130 CONTINUE
+      DO 140 NK=NBBODY,NBODY
+  140 THETA(NK)=THET(NK)
+      REWIND 9
+      IF (NWING.NE.0) READ (9)
+      WRITE (9) ARRAY
+      REWIND 12
+      GOTO 160
+  150 WRITE (108,260)
+c      CALL EXIT
+      stop
+  155 WRITE (108,265)
+c      CALL EXIT
+      stop
+  160 RETURN
+  170 FORMAT (10F7.0)
+  180 FORMAT (1H ,9X,35H POD PANEL CORNER POINT COORDINATES/10X,86H1 AND
+     1 3 INDICATE PODS PANEL LEADING-EDGE POINTS, 2 AND 4 INDICATE TRAIL
+     2ING-EDGE POINTS)
+  190 FORMAT (1H ,3X,5HPANEL,4(8X,1HX,8X,1HY,8X,1HZ)/20X,3(1H1,8X),3(1H2
+     1,8X),3(1H3,8X),3(1H4,8X)//)
+  200 FORMAT (1H ,4X,I3,4X,12F9.5)
+  210 FORMAT (1H ,1X,36H POD PANEL CONTPOL POINT COORDINATES)
+  220 FORMAT (1H ,5HPOINT,6X,1HX,10X,1HY,10X,1HZ/15X,3(2HCP,9X)//)
+  230 FORMAT (1H ,1X,I3,4X,3F11.5)
+  240 FORMAT (1H ,4X,39H POD PANEL AREAS AND INCLINATION ANGLES)
+  250 FORMAT (1H ,5HPANEL,6X,4HAREA,7X,5HDELTA,6X,5HTHETA//)
+  260 FORMAT (4X,64H ERROR - NUMBER OF BODY AND PODS PANEL CORNER POINTS
+     1 EXCEEDS 600)
+  265 FORMAT (4X,' ERROR - NUMBER OF PODS PANEL CORNER POINTS EXCEEDS
+     # 600')
+      END
+C     ******************************
+      SUBROUTINE NUTORD
+C     ******************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /BL/ J0,J1,J2,J3,J4,J5,J6,NWAF,NWAFOR,NDUM(29),NF,N
+     1FINOR,NC,NCANOR,NDUM1(13)
+      COMMON /NEWCOM/ K1,KWAF,KWAFOR,KRADX(9),KFORX(9),KRAD,MAX,
+     1K4,K5,KF(6),KAN(6),KFINOR(6),KANOR(6),KOL,NCPT,LOCPT,NDUM2(19),NN1
+     2,XCPT,DUM(39)
+      COMMON /COEF/ C(4,50),CC(4,50)
+      COMMON ARRAY(6000),BLOCK(17600)
+      DIMENSION TALORG(6,2,4),XT(6,30),TALORD(6,2,30),TALCR(6,30
+     1),TALOR(6,30),TORD(30),ZORD(30),DZC(30),DZT(30),XAF(30),TZ
+     2ORK(20,30),WAFORK(20,30),DZCDX(20,30),DZTDX(20,30),DZCDXK(
+     320,30),WAFOR(20,30),DZTDXK(20,30),RHO(20),A(20),B(20),R(20
+     4),XAT(30),XAFK(6,30)
+      EQUIVALENCE (BLOCK,TALORG),(BLOCK(49),XT),(BLOCK(229),TALO
+     1RD),(BLOCK(8200),TALOR),(BLOCK(8380),TALCR),(BLOCK(589),WAFO
+     2R),(BLOCK(3111),TZORK),(BLOCK(3711),WAFORK),(BLOCK(4311),D
+     3ZCDX),(BLOCK(4911),DZCDXK),(BLOCK(5511),DZTDXK),(BLOCK(6111
+     4),XAFK),(BLOCK(1189),DZC),(BLOCK(1219),DZT),(BLOCK(1249),X
+     5AT),(BLOCK(1279),RHO),(BLOCK(1299),R),(BLOCK(1319),A),(BLO
+     6CK(1339),B),(BLOCK(1359),TORD),(BLOCK(1389),ZORD),(BLOCK(2
+     7511),DZTDX)
+      LOGICAL FIN
+      EPS1=1.0d-14
+      FIN=.FALSE.
+      IF (K4.LE.0) GOTO 10
+      FIN=.TRUE.
+      NT=NF
+      NWAFOR=IABS(NFINOR)
+      J1=-1
+      IF (NFINOR.LT.0) J1=1
+      JL=J4
+      KL=K4
+      GO TO 20
+   10 IF (K5.LE.0) RETURN
+      NT=NC
+      NWAFOR=IABS(NCANOR)
+      J1=-1
+      IF (NCANOR.LT.0) J1=1
+      JL=J5
+      KL=K5
+   20 CONTINUE
+      IF (KL.EQ.3) READ (105,240) (RHO(I),I=1,NT)
+      DO 230 N=1,NT
+      KWAFOR=0
+      IF (FIN.AND.KFINOR(N).GT.0) KWAFOR=KFINOR(N)
+      IF (.NOT.FIN.AND.KANOR(N).GT.0) KWAFOR=KANOR(N)
+      IF (KWAFOR.EQ.0) GO TO 30
+      READ (105,240) (XAFK(N,K),K=1,KWAFOR)
+      GOTO 50
+  30  KWAFOR=NWAFOR
+      DO 40 K=1,NWAFOR
+  40  XAFK(N,K)=XT(N,K)
+  50  CONTINUE
+      NWAR=NWAFOR-1
+      NDA=-1
+      DA=0.d0
+      DO 60 L=1,NWAFOR
+      XAF(L)=XT(N,L)
+      ZORD(L)=TALCR(N,L)
+   60 TORD(L)=TALOR(N,L)
+      IF (J1.LT.0) GO TO 80
+      CALL DERIV (XAF,ZORD,NWAFOR,NDA,DA,DZC)
+      DO 70 L=1,NWAR
+      DO 70 M=1,4
+   70 CC(M,L)=C(M,L)
+      GO TO 100
+   80 DO 90 L=1,NWAR
+      DZC(L)=0.d0
+      DO 90 M=1,4
+   90 CC(M,L)=0.d0
+      DZC(NWAFOR)=0.d0
+  100 NWA=NWAFOR
+      IF (KL.LT.3.OR.RHO(N).EQ.0) GO TO 120
+      NWA=NWAR
+      NDA=0
+      R(N)=SQRT(2.d0*RHO(N))
+      SAF2=SQRT(XAF(2))
+      SAF3=SQRT(XAF(3))
+      CON2=TORD(2)/XAF(2)-R(N)/SAF2
+      CON3=TORD(3)/XAF(3)-R(N)/SAF3
+      DX=XAF(3)-XAF(2)
+      A(N)=(CON2*XAF(3)-CON3*XAF(2))/DX
+      B(N)=(CON3-CON2)/DX
+      DA=R(N)/(2.d0*SAF2)+A(N)+2.d0*B(N)*XAF(2)
+      DO 110 L=1,NWAR
+      XAT(L)=XAF(L+1)
+  110 TORD(L)=TORD(L+1)
+      GO TO 140
+  120 DO 130 L=1,NWA
+  130 XAT(L)=XAF(L)
+  140 CALL DERIV (XAT,TORD,NWA,NDA,DA,DZT)
+      DO 150 L=1,NWAFOR
+      DZCDX(N,L)=DZC(L)
+  150 DZTDX(N,L)=DZT(L)
+      IF (KL.LT.3.OR.ABS(RHO(N)).LT.EPS1) GO TO 170
+      DZTDX(N,1)=900.d0
+      DO 160 L=2,NWAFOR
+  160 DZTDX(N,L)=DZT(L-1)
+  170 CONTINUE
+      IF (KWAFOR.EQ.0) GOTO 230
+      TZORK(N,1)=TALCR(N,1)
+      DZCDXK(N,1)=DZCDX(N,1)
+      WAFORK(N,1)=TALOR(N,1)
+      DZTDXK(N,1)=DZTDX(N,1)
+      KI=2
+      DO 220 J=1,NWAR
+      DO 200 K=KI,KWAFOR
+      IF (XAFK(N,K).GT.XAF(J+1)) GO TO 210
+      XJ=XAFK(N,K)
+      TZORK(N,K)=CC(1,J)+XJ*(CC(2,J)+XJ*(CC(3,J)+XJ*CC(4,J)))
+      DZCDXK(N,K)=CC(2,J)+XJ*(2.d0*CC(3,J)+3.d0*XJ*CC(4,J))
+      L=J
+      XL=XJ
+      IF (KL.LT.3.OR.ABS(RHO(N)).LT.EPS1) GOTO 190
+      IF (J.GT.1) GOTO 180
+      SXJ=SQRT(XJ)
+      DZTDXK(N,K)=R(N)/(2.d0*SXJ)+A(N)+2.d0*B(N)*XJ
+      WAFORK(N,K)=R(N)*SXJ+XJ*(A(N)+B(N)*XJ)
+      GO TO 200
+  180 XL=XJ-XAF(1)
+      L=J-1
+  190 WAFORK(N,K)=C(1,L)+XL*(C(2,L)+XL*(C(3,L)+XL*C(4,L)))
+      DZTDXK(N,K)=C(2,L)+XL*(2.d0*C(3,L)+3.d0*XL*C(4,L))
+  200 CONTINUE
+  210 KI=K
+  220 CONTINUE
+  230 CONTINUE
+      RETURN
+  240 FORMAT (10F7.0)
+      END
+C     ***********************
+      SUBROUTINE TALPAN
+C     ***********************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /BL/ J0,J1,J2,J3,J4,J5,J6,NWAF,NWAFOR,NNUNW(29),NF,N
+     1FINOR,NK,NCANOR,NDUM(13)
+      COMMON /PARAM/NBODY,NWING,NTAIL,LBC,THK,NN1,MACH,ALPHA,REFA,
+     *SIDES,DUM(6)
+      COMMON /NEWCOM/ KL,KWAF,KWAFOR,KRADX(9),KFORX(9),KRAD,MAX,K4,
+     1K5,KF(6),KAN(6),KFINOR(6),KANOR(6),KOL,NCPT,LOCPT,NDUM2(19),NN2
+     2,XCPT,DUM1(39)
+      COMMON /SEG/ NSEG,NROW(20),NCOL(20),NN3,COSS(20),SINS(20),BTE(20),
+     1NWT(20),SPNW(20),XLEW(20),BLE(20),ZLEW(20),XS(20),YS(20),ZS(20)
+     2,NCSUM
+      COMMON ARRAY(6000),BLOCK(17600)
+      COMMON /VELCOM/ NDUM3(5),NN4,EMM,PRENT,NDUM4(83)
+      DIMENSION XPT(600),YPT(600),ZPT(600),THET(600),DELTA(600),
+     1XC(30,20),YC(30,20),ZC(30,20),ZU(30,20),AREA(600),XE(600),
+     2TALORG(6,2,4),XT(6,30),TALORD(6,2,30),TALCR(6,30),TALOR(6,
+     330),WAFORG(2,4),TZORK(20,30),WAFORK(20,30),DZCDX(20,30),DZ
+     4TDX(20,30),DZCDXK(20,30),DZTDXK(20,30),SLOPE(600),XAFK(6,3
+     50),XK(20),YK(20),ZK(20),CK(20),CD(20),ZY(20),BL(20),TH(20),
+     6BT(20),CHORD(600)
+      EQUIVALENCE (BLOCK,TALORG),(BLOCK(49),XT),(BLOCK(229),TALO
+     1RD),(BLOCK(8200),TALOR),(BLOCK(8380),TALCR),(BLOCK(589),ZY),
+     2(BLOCK(609),XK),(BLOCK(629),YK),(BLOCK(649),ZK),(BLOCK(669
+     3),CK),(BLOCK(689),BL),(BLOCK(709),BT),(BLOCK(729),TH),(BLO
+     4CK(2511),DZTDX),(BLOCK(3111),TZORK),(BLOCK(3711),WAFORK),(
+     5BLOCK(4311),DZCDX),(BLOCK(4911),DZCDXK),(BLOCK(5511),DZTDX
+     6K),(BLOCK(6111),XAFK),(BLOCK(6301),CHORD),(BLOCK(6901),SLO
+     7PE,ZU),(ARRAY,XPT),(ARRAY(601),YPT),(ARRAY(1201),ZPT),(ARR
+     8AY(1801),THET),(ARRAY(2401),DELTA),(ARRAY(3001),XC),(ARRAY
+     9(3601),YC),(ARRAY(4201),ZC),(ARRAY(4801),AREA),(ARRAY(5401),XE)
+      LOGICAL LBC,THK,FIN
+      INTEGER PRENT
+      REAL*8 MACH
+      XIN(X1,Y1,X2,Y2,Y)=X1+(X2-X1)*(Y-Y1)/(Y2-Y1)
+      EPS1=1.0d-14
+      EPS=1.0d-6
+      FIN=.FALSE.
+      IF (K4.LE.0) GOTO 10
+      FIN=.TRUE.
+      IF (PRENT.LT.0) WRITE (108,270)
+      NTAL=NF
+      KK=K4
+      KL=K4
+      K4=0
+      GO TO 20
+   10 IF (K5.LE.0) RETURN
+      KK=0
+      KL=K5
+      NTAL=NK
+      IF (PRENT.LT.0) WRITE (108,280)
+   20 CONTINUE
+      IF (PRENT.LT.0) WRITE (108,290)
+      REWIND 9
+      IF (NWING.NE.0) READ (9) ARRAY,CHORD,SLOPE
+      REWIND 9
+      KI=1
+      NI=1
+      NC=NCPT
+      NJ=NCPT
+      NINIT=NWING
+      NP=NWING
+      NC1=NC+1
+      NP1=NP+1
+      DO 200 NT=1,NTAL
+      IF(FIN) KWAF=KF(NT)
+      IF (.NOT.FIN) KWAF=KAN(NT)
+      KWAF=IABS(KWAF)
+      IF (KWAF.EQ.0) GOTO  30
+      READ (105,260) (YK(K),K=1,KWAF)
+   30 KWAFOR=NWAFOR
+      IF (FIN.AND.KFINOR(NT).GT.0) KWAFOR=KFINOR(NT)
+      IF (.NOT.FIN.AND.KANOR(NT).GT.0) KWAFOR=KANOR(NT)
+      DO 50 N=1,2
+      WAFORG(N,1)=TALORG(NT,N,1)
+      IF (KK.GT.0) GOTO 40
+      WAFORG(N,2)=TALORG(NT,N,2)
+      WAFORG(N,3)=TALORG(NT,N,3)
+      GO TO 50
+   40 WAFORG(N,2)=TALORG(NT,N,3)
+      WAFORG(N,3)=TALORG(NT,N,2)
+   50 WAFORG(N,4)=TALORG(NT,N,4)
+      IF (KWAF.NE.0) GO TO 70
+      KWAF=2
+      DO 60 K=1,2
+   60 YK(K)=WAFORG(K,2)
+   70 CONTINUE
+      N=1
+      M=2
+      DELY=WAFORG(N+1,2)-WAFORG(N,2)
+      IF (ABS(DELY).LT.EPS1) GOTO 200
+      DELX=WAFORG(N+1,1)-WAFORG(N,1)
+      DELZ=WAFORG(N+1,3)-WAFORG(N,3)
+      DELC=WAFORG(N+1,4)-WAFORG(N,4)
+      IF (FIN) TH(N)=ATAN2(DELY,DELZ)
+      IF (.NOT.FIN) TH(N)=ATAN2(DELZ,DELY)
+      IF (.NOT.FIN) GOTO 71
+      BL(N)=DELX/DELY
+      BT(N)=(DELX+DELC)/DELY
+      GOTO 72
+   71 BL(N)=DELX*COS(TH(N))/DELY
+      BT(N)=(DELX+DELC)*COS(TH(N))/DELY
+   72 CD(N)=WAFORG(N,4)
+      NSEG=NSEG+1
+      SINS(NSEG)=SIN(TH(N))
+      COSS(NSEG)=COS(TH(N))
+      BLE(NSEG)=BL(N)
+      BTE(NSEG)=BT(N)
+      NWT(NSEG)=1
+      IF (FIN) NWT(NSEG)=-1
+      IF (.NOT.FIN.AND.KAN(NT).LT.0) NWT(NSEG)=2
+      DO 190 K=KI,KWAF
+      IF (K.NE.KI) NCSUM=NCSUM+1
+      K1=K-1
+      L=K+KOL
+      L1=L-1
+      XK(K)=XIN(WAFORG(NI,1),WAFORG(NI,2),WAFORG(M,1),WAFORG(M,2),YK(K))
+      ZK(K)=XIN(WAFORG(NI,3),WAFORG(NI,2),WAFORG(M,3),WAFORG(M,2),YK(K))
+      CK(K)=XIN(WAFORG(NI,4),WAFORG(NI,2),WAFORG(M,4),WAFORG(M,2),YK(K))
+      CL=CK(K)/100.d0
+      LP=1
+      SJ=1.0d0
+      ZY(K)=ZK(K)
+      IF (FIN) ZK(K)=YK(K)
+   80 CONTINUE
+      DO 140 J=1,KWAFOR
+      XC(J,L)=XK(K)+CL*XAFK(NT,J)
+      ZC(J,L)=ZK(K)
+      IF (LBC) GOTO 90
+      ZCAM=TZORK(NT,J)
+      ZTHK=WAFORK(NT,J)
+      IF (FIN) THEN
+        YC(J,L)=ZY(K)+CL*(ZCAM+SJ*ZTHK)
+        IF (LP.EQ.1) ZU(J,L)=YC(J,L)
+	ELSE
+        ZC(J,L)=ZY(K)+CL*(ZCAM+SJ*ZTHK)
+        IF (LP.EQ.1) ZU(J,L)=ZC(J,L)
+      ENDIF
+   90 IF (FIN) then
+        YK(K)=ZY(K)
+	else
+        YC(J,L)=YK(K)
+	endif
+   91 IF (K.EQ.KI) GOTO 140
+      NJ=NJ+1
+      IF (J.EQ.1) GOTO  140
+      J1=J-1
+      NC=NC+1
+      NP=NP+1
+      IP=1
+      IF (SJ.LT.0.0d0) IP=0
+      IQ=0
+      IF (.NOT.LBC) CALL PANEL (IP,IQ,J,L,LP,NP,AP)
+      AREA(NP)=AP
+      CHORD(NP)=0.d0
+      IF (PRENT.GE.0) GO TO 110
+      IF (.NOT.LBC.AND.LP.EQ.1) GO TO 100
+      WRITE (108,300) NP,XC(J1,L1),YC(J1,L1),ZC(J1,L1),XC(J,L1),YC(J,L1
+     1),ZC(J,L1),XC(J1,L),YC(J1,L),ZC(J1,L),XC(J,L),YC(J,L),ZC(J,L)
+      GO TO 110
+  100 if (FIN) then
+      WRITE (108,300) NP,XC(J1,L1),ZU(J1,L1),ZC(J1,L1),XC(J,L1),ZU(J,L1
+     1),ZC(J,L1),XC(J1,L),ZU(J1,L),ZC(J1,L),ZU(J,L),YC(J,L),ZC(J,L)
+      else
+      WRITE (108,300) NP,XC(J1,L1),YC(J1,L1),ZU(J1,L1),XC(J,L1),YC(J,L1
+     1),ZU(J,L1),XC(J1,L),YC(J1,L),ZU(J1,L),XC(J,L),YC(J,L),ZU(J,L)
+	endif
+  110 CONTINUE
+      CR=XC(J,L1)-XC(J1,L1)
+      CT=XC(J,L)-XC(J1,L)
+      RI=(1.d0+CT/(CR+CT))/3.d0
+      RO=1.d0-RI
+      XLE=RI*XC(J1,L)+RO*XC(J1,L1)
+      XTE=RI*XC(J,L)+RO*XC(J,L1)
+      CHORD(NP)=XTE-XLE
+      SPN=SQRT((YK(K)-YK(K1))*(YK(K)-YK(K1))+(ZK(K)-ZK(K1))*(ZK(
+     1K)-ZK(K1)))
+      SPNW(NCSUM)=SPN
+      IF (J.EQ.2) XLEW(NCSUM)=XLE
+      YLE=RI*YK(K)+RO*YK(K1)
+      ZLE=RI*ZK(K)+RO*ZK(K1)
+      IF (J.EQ.2) ZLEW(NCSUM)=ZLE
+      IF (LBC) GOTO 120
+      IF (LP.EQ.1.OR.J.NE.KWAFOR/2) GOTO 140
+      XS(NCSUM)=XTE
+      YS(NCSUM)=YLE
+      ZTU=RI*ZU(J,L)+RO*ZU(J,L1)
+      ZTL=RI*ZC(J,L)+RO*ZC(J,L1)
+      ZS(NCSUM)=(ZTU+ZTL)/2.d0
+      GO TO 140
+  120 CONTINUE
+      XPT(NC)=XLE
+      XE(NC)=XPT(NC)
+      YPT(NC)=YLE
+      ZPT(NC)=ZLE
+      AREA(NP)=.5d0*SPN*(CR+CT)
+      THET(NC)=TH(N)
+      KJ=KI+1
+      IF (K.GT.KJ) GOTO 130
+      DZCDX(NT,J)=DZCDXK(NT,J)
+      IF (J.EQ.2) DZCDX(NT,1)=DZCDXK(NT,1)
+      DZTDX(NT,J)=DZTDXK(NT,J)
+  130 DELTA(NC)=DZCDX(NT,J1)
+      SLOPE(NJ)=DZTDX(NT,J)
+      IF (J.NE.KWAFOR) GOTO 140
+      NC=NC+1
+      XPT(NC)=XTE-EPS
+      XE(NC)=XPT(NC)
+      YPT(NC)=YPT(NC-1)
+      ZPT(NC)=ZPT(NC-1)
+      IF (FIN) ZTE=YPT(NC)
+      IF (.NOT.FIN) ZTE=ZPT(NC)
+      DELTA(NC)=DZCDXK(NT,J)
+      THET(NC)=TH(N)
+  140 CONTINUE
+      IF (LBC) GOTO 150
+      IF (SJ.LT.0.0d0) GOTO 150
+      SJ=-1.0d0
+      LP=2
+      GO TO 80
+  150 CONTINUE
+      IF (K.EQ.KI) GOTO 190
+      IF (.NOT.LBC) GOTO 190
+      IF (KL.EQ.3) GOTO 160
+      DZTDX(NT,1)=DZTDXK(NT,1)
+      GO TO 180
+  160 NPJ=NP-J1
+      SLE=-DZTDX(NT,2)
+      DO 170 I=2,J1
+  170 SLE=SLE-(DZTDX(NT,I)+DZTDX(NT,I+1))*CHORD(NPJ+I)/CHORD(NPJ+1)
+      DZTDX(NT,1)=SLE
+  180 NJJ=NJ-J1
+      SLOPE(NJJ)=DZTDX(NT,1)
+  190 CONTINUE
+      NROW(NSEG)=J1
+      NCOL(NSEG)=KWAF-KI
+      NCPT=NC
+c-err      IF (NCPT.GT.600) GOTO 240
+      NWING=NP
+      NTAIL=NWING-NINIT
+      KOL=KOL+KWAF
+  200 CONTINUE
+      IF (PRENT.GE.0) GOTO 230
+      IF (FIN) WRITE (108,310)
+      IF (.NOT.FIN) WRITE (108,320)
+      IF (LBC) WRITE (108,330)
+      IF (.NOT.LBC) WRITE (108,340)
+      DO 210 NP=NC1,NCPT
+      IF (LBC) WRITE (108,350) NP,XPT(NP),YPT(NP),ZPT(NP),THET(NP)
+     1,DELTA(NP),SLOPE(NP)
+      IF (.NOT.LBC) WRITE (108,350) NP,XPT(NP),YPT(NP),ZPT(NP),THET
+     1(NP),DELTA(NP)
+  210 CONTINUE
+      IF (FIN) WRITE (108,390)
+      IF (.NOT.FIN) WRITE (108,380)
+      WRITE (108,360)
+      DO 220 NP=NP1,NWING
+  220 WRITE (108,370) NP,AREA(NP),CHORD(NP)
+  230 CONTINUE
+      WRITE (9) ARRAY,CHORD,SLOPE
+      GOTO 250
+  240 WRITE (108,400)
+c      CALL EXIT
+c-err      stop
+  250 RETURN
+  260 FORMAT (10F7.0)
+  270 FORMAT (1H ,9X,35H FIN PANEL CORNER POINT COORDINATES/10X,86H 1 AN
+     1D 3 INDICATE FIN PANEL LEADING-EDGE POINTS, 2 AND 4 INDICATE TRAIL
+     2ING-EDGE POINTS)
+  280 FORMAT (1H ,9X,35HTAIL PANEL CORNER POINT COORDINATES/10X,86H1 AND
+     1 3 INDICATE TAIL PANEL LEADING-EDGE POINTS, 2 AND 4 INDICATE TRAIL
+     2ING-EDGE POINTS)
+  290 FORMAT (1H ,5X,5HPANEL,4(8X,1HX,8X,1HY,8X,1HZ)/20X,3(1H1,8X),3(1H2
+     1,8X),3(1H3,8X),3(1H4,8X)//)
+  300 FORMAT (1H ,4X,I3,4X,12F9.5)
+  310 FORMAT (1H ,1X,48H FIN PANEL CONTROL POINTS AND INCLINATION ANGLES
+     1)
+  320 FORMAT (1H ,1X,48HTAIL PANEL CONTROL POINTS AND INCLINATION ANGLES
+     1)
+  330 FORMAT (1H ,5HPOINT,8X,1HX,10X,1HY,10X,1HZ,10X,5HTHETA,6X,6HCAMBER
+     1,5X,9HTHICKNESS/15X,3(2HCP,9X),10X,5HSLOPE,8X,5HSLOPE//)
+  340 FORMAT (1H ,5HPOINT,3X,1HX,10X,1HY,10X,1HZ,10X,5HTHETA,6X,5HDELTA/
+     115X,3(2HCP,9X)//)
+  350 FORMAT (1H ,1X,I3,4X,8F11.5)
+  360 FORMAT (1H ,5HPANEL,6X,4HAREA,8X,5HCHORD)
+  370 FORMAT (1H ,1X,I3,4X,2F11.5)
+  380 FORMAT (1H ,9X,27HTAIL PANEL AREAS AND CHORDS)
+  390 FORMAT (1H ,9X,27H FIN PANEL AREAS AND CHORDS)
+  400 FORMAT (65H ERROR - NUMBER OF WING AND TAIL PANEL CONTROL POINTS E
+     1XCEEDS 600)
+      END
+C     *************************
+      SUBROUTINE VELCMP
+C     *************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /PARAM/NBODY,NWING,NTAIL,LBC,THK,NN1,MACH,ALPHA,REFA,
+     *SIDES,DUM(6)
+      COMMON /VELCOM/ NPOINT,NPART,IMAX,JMAX,NMAX,NN2,EM,PRENT,NWTHK,
+     1NWBLOK,NWROW(20),NBBLOK,NBROW(60)
+      COMMON /NEWCOM/ K1,KWAF,KWAFOR,KRADX(9),KFORX(9),KFUS,MAX,
+     1KDUM(28),LOCPT(20),NN3,XCPT(20),DUMM(20)
+      COMMON ARRAY(6000),BLOCK(17600)
+      COMMON /SEG/ NSEG,NROW(20),NCOL(20),NN4,COSS(20),SINS(20),BT(2
+     10),NDUM(20),DUM1(40),BL(20),DUM2(80)
+     2,NCSUM
+      COMMON /MATCOM/ MATIN
+      COMMON /PODOR/ K3,K6,NP,KPADX(9),KPODX(9),NPRADX(9),NPUSOR(9)
+      COMMON /FIELD/ DUM5(10250),KFIELD,NDUM5(2),FIEL
+      COMMON /LBMAX/ NAKRAD(9)
+      COMMON /TOLA/ ITT(600),NGRI
+      COMMON /ITER/ ITERM,MAXWTR,ITEMAX,GROUND,BET,DIVER,BELOYC,SHEK
+      DIMENSION XLE(600), XPT(600), DEL(600), COSTH(600)
+      DIMENSION XBT(600),YBT(600),ZBT(600),YPT(600),ZPT(600)
+      DIMENSION CHORD(600),DZTDX(600),IT(600),D(60,60),DELTA(600)
+      DIMENSION DELTI(600),TI(600)
+      EQUIVALENCE (BLOCK,DEL), (BLOCK(601),COSTH)
+      EQUIVALENCE (BLOCK(3901),XBT),(BLOCK(4501),YBT),(BLOCK(510
+     11),ZBT)
+      EQUIVALENCE (BLOCK(5701),TI),(BLOCK(6301),CHORD),(BLOCK(69
+     101),DZTDX),(ARRAY(2401),DELTA),(ARRAY(4801),DELTI)
+      EQUIVALENCE (ARRAY,XPT),(ARRAY(1801),D),(ARRAY(5401),XLE)
+      EQUIVALENCE (ARRAY(601),YPT),(ARRAY(1201),ZPT)
+      REAL*8 MACH
+      INTEGER PRENT
+      LOGICAL LBC,SUB,SUPLE,THK,SUPTE,FIEL,NAKRAD,ITEMAX,GROUND,
+     *BET,DIVER,BELOYC,SHEK
+      MATIN=0
+      NMAX=60
+      EPS=1.0d-6
+      IF (.NOT.ITEMAX) GO TO 6
+   9  ITERM=ITERM-1
+      DO 900 I=1,600
+      IT(I)=0
+  900 TI(I)=0.d0
+      IF (MAXWTR.NE.ITERM) GO TO 2
+   6  IF (.NOT.FIEL) READ (105,240) MACH,ALPHA,SIDES
+      IF (FIEL) GOTO 3
+      IF (.NOT.ITEMAX) GO TO 7
+  2   IF (ITERM.GT.0) GO TO 1
+      IF (ITERM.EQ.0) ITERM=MAXWTR+1
+      GO TO 9
+   7  IF (MACH.LT.0.0d0.OR.MACH.EQ.EM) RETURN
+   1  IF (MACH.LT.0.0d0) RETURN
+  3   SUB=MACH.LT.1.0d0
+      BETA=SQRT(ABS(MACH*MACH-1.0d0))
+      BETAD=1.d0/BETA
+      REWIND 10
+      REWIND 11
+      REWIND 12
+      NPOINT=NCPT
+      NPANEL=NBODY+NWING
+      IF (NPANEL.EQ.0) RETURN
+      REWIND 9
+      IF (.NOT.ITEMAX) GO TO 11
+      REWIND 19
+  11  IF (NWING.EQ.0) GOTO 70
+      NCPT=NWING
+      IF (.NOT.LBC) GOTO 10
+      READ (9) ARRAY,CHORD,DZTDX
+      IF (NBODY.EQ.0) GOTO 10
+      READ (9) ARRAY
+      WRITE (12) ARRAY
+      REWIND 12
+      REWIND 9
+      READ (9) ARRAY, CHORD, DZTDX
+   10 REWIND 9
+      I=0
+      J=0
+      K=0
+      NWBLOK=0
+      DO 50 N=1,NSEG
+      NC=NCOL(N)
+      NR=NROW(N)
+      NR1=NR+1
+      NWBLOK=NWBLOK+NC
+      BLE=BL(N)*BETAD
+      SUPLE=.FALSE.
+      IF (.NOT.SUB.AND.ABS(BLE).LT.1.0d0) SUPLE=.TRUE.
+      BTE=BT(N)*BETAD
+      SUPTE=.FALSE.
+      IF (.NOT.SUB.AND.ABS(BTE).LT.1.0d0) SUPTE=.TRUE.
+      DO 50 M=1,NC
+      K=K+1
+      NK=NR
+      IF (LBC.AND.SUPTE) NK=NR1
+      IF (.NOT.LBC) NK=2*NR
+      NWROW(K)=NK
+      DO 50 L=1,NR1
+      I=I+1
+      IT(I)=0
+      TI(I)=DFLOAT(IT(I))
+      IF (L.LT.NR1) GOTO 30
+      IF (LBC) XPT(I)=XLE(I)
+      IF (SUPTE) GOTO 20
+      IT(I)=I
+      TI(I)=DFLOAT(IT(I))
+      IF (.NOT.SUPTE) GOTO 50
+   20 J=J+1
+      IF (LBC) DEL(J)=DELTA(I)
+      IF (LBC) COSTH(J)=COSS(N)
+      GO TO 50
+   30 IF (.NOT.LBC) GOTO 50
+      J=J+1
+      XF=.50d0
+      XS=XF
+      LOCPT(N)=0
+      IF (.NOT.SUPTE) GOTO  40
+      LOCPT(N)=1
+      IF (SUPLE) XS=EPS
+      XF=XS*DFLOAT(NR1-L)/DFLOAT(NR1-1)
+   40 XPT(I)=XF*XLE(I+1)+(1.d0-XF)*XLE(I)
+      DEL(J)=XF*DELTA(I+1)+(1.d0-XF)*DELTA(I)
+      COSTH(J)=COSS(N)
+      XCPT(N)=XS
+   50 CONTINUE
+      IF (LBC) NCPT=I
+      IF (.NOT.LBC) GOTO 60
+      REWIND 13
+      WRITE (13) DEL,COSTH
+      REWIND 13
+      WRITE (9) ARRAY,CHORD,DZTDX
+      IF (NBODY.EQ.0) GOTO 60
+      READ (12) ARRAY
+      WRITE (9) ARRAY
+   60 REWIND 9
+      REWIND 12
+      NPOINT=NCPT
+   70 CONTINUE
+      EM=MACH
+      NPART=1
+      IF (NWING.NE.0) READ (9)ARRAY,CHORD,DZTDX
+      IF (NBODY.EQ.0) GO TO 100
+      READ (9) ARRAY
+      IF (.NOT.ITEMAX) GO TO 8
+      IF (ITERM.GT.0) READ(19) ARRAY
+   8  DO 80 N=1,NBODY
+      XBT(N)=XPT(N)
+      YBT(N)=YPT(N)
+   80 ZBT(N)=ZPT(N)
+      NPOINT=NBODY
+   90 IF (NPART.EQ.1) WRITE (108,270)
+      IF (FIEL.AND.NPART.GT.1) GOTO 110
+      CALL BODVEL
+      GOTO 110
+  100 IF (NPART.EQ.1.OR.NPART.EQ.4) WRITE (108,300)
+      IF (FIEL.AND.NPART.EQ.2) GOTO 110
+      IF(LBC) CALL LINVEL
+      IF(.NOT.LBC) CALL WNGVEL
+  110 CONTINUE
+      IF (NWING.EQ.0.AND.NBODY.NE.0) GO TO 160
+      IF (NBODY.EQ.0.AND.NWING.NE.0) GO TO 160
+      NPART=NPART+1
+      IF (NPART.GT.4) GO TO 150
+      IF (NPART.EQ.2) WRITE (108,280)
+      IF (NPART.EQ.3) WRITE (108,290)
+      REWIND 9
+      READ (9) ARRAY,CHORD,DZTDX
+      IF(NPART.GT.2) GO TO 130
+  120 READ (9) (ARRAY(I),I=1,2400),(DELTI(I),I=1,600)
+      IF (NPART.GT.2) GOTO 90
+      NPOINT=NBODY
+      GOTO 100
+  130 NPOINT=NCPT
+      IF (NPART.EQ.4) GOTO 100
+      READ (9) ARRAY
+      DO 140 N=1,NBODY
+      XBT(N)=XPT(N)
+      YBT(N)=YPT(N)
+  140 ZBT(N)=ZPT(N)
+      REWIND 9
+      GOTO 120
+  150 READ (9) ARRAY
+  160 REWIND 10
+      REWIND 11
+      REWIND 12
+      MATIN=1
+      IF (NBODY.EQ.0) GOTO 190
+      NBBLOK=1
+      NBROW(1)=NBODY
+      IF (FIEL) GOTO 190
+      IF (NBODY.LE.NMAX) GOTO 190
+      NBBLOK=0
+      IF (KFUS.LT.1) GOTO 181
+      DO 180 KF=1,KFUS
+      NR=KRADX(KF)-1
+      NC=KFORX(KF)-1
+      DO 180 NN=1,NC
+      NBBLOK=NBBLOK+1
+      NBROW(NBBLOK)=NR
+      DO 170 M=1,NR
+  170 READ (12) (D(M,N),N=1,NR)
+  180 WRITE (9) D
+  181 IF (NP.EQ.0) GOTO 190
+      DO 185 KF=1,NP
+      NR=2*(KPADX(KF)-1)
+      NR=IABS(NR)
+      IF(NAKRAD(KF)) NR=IABS(KPADX(KF))-1
+      NC=KPODX(KF)-1
+      DO 185 NN=1,NC
+      NBBLOK=NBBLOK+1
+      NBROW(NBBLOK)=NR
+      DO 183 M=1,NR
+  183 READ (12) (D(M,N),N=1,NR)
+  185 WRITE (9) D
+  190 IF (NWING.EQ.0) GOTO 220
+      IF (FIEL) GOTO 220
+      IF (NWING.LE.NMAX) GOTO 220
+      DO 210 NW=1,NWBLOK
+      NR=NWROW(NW)
+      DO 200 M=1,NR
+  200 READ (12) (D(M,N),N=1,NR)
+  210 WRITE (9) D
+      GOTO 230
+  220 NWBLOK=1
+      NWROW(1)=NWING
+  230 REWIND 9
+      REWIND 12
+      DO  99 I=1,600
+      ITT(I)=IT(I)
+  99  CONTINUE
+      RETURN
+  240 FORMAT (10F7.0)
+  250 FORMAT (1H ,6HTIME =,F10.5)
+  260 FORMAT (1H ,10HPATITION =,I3,2X,6HTIME =,F10.5)
+  270 FORMAT (1H ,31HINFLUENCE OF BODY PANEL ON BODY)
+  280 FORMAT (1H ,31HINFLUENCE OF WING PANEL ON BODY)
+  290 FORMAT (1H ,31HINFLUENCE OF BODY PANEL ON WING)
+  300 FORMAT (1H ,31HINFLUENCE OF WING PANEL ON WING)
+      END
+C     ***************************************
+      SUBROUTINE TRAP (XT,YT,SUM,NT)
+C     ***************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      DIMENSION XT(1),YT(1)
+      SUM=0.d0
+      DO 10 I=2,NT
+   10 SUM=SUM+.5d0*(XT(I)-XT(I-1))*(YT(I)+YT(I-1))
+      RETURN
+      END
+C     ***
+****************************
+      SUBROUTINE BODVEL
+C     *******************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /PARAM/ NBODY,NWING,NPANEL,LBC,THK,NN1,MACH,ALPHA,REFA,
+     *SIDES,DUM(6)
+      COMMON /VELCOM/ NPOINT,NPART,IMAX,JMAX,NMAX,NN2,EX,PRENT,NWTHK,NDU
+     1M4(82)
+      COMMON/LBMAX/NAKRAD(9)
+      COMMON /NEWCOM/ K1,KWAF,KWAFOR,KRADX(9),KFORX(9),KFUS,MAX
+     1,NDUM3(48),NN3,DUM4(40)
+      COMMON XPT(600),YPT(600),ZPT(600),THET(600),DELTA(600),
+     1XC(600),YC(600),ZC(600),DELTI(600),DUM1(600),
+     2UB(600),VB(600),WB(600),VI(600),WI(600),AN(600),DN(60),DUM2(240)
+     3,XBT(600),YBT(600),ZBT(600),TT(600),CD(600),DUM3(10700)
+      COMMON /BODCOM/ EM,DA,CX,XCOR(4),YCOR(4),ZCOR(4),XI,YI,ZI,XJ,ZJ
+      COMMON /BTHET/ THETA(600)
+      COMMON /PODOR/ K3,K6,NP,KPADX(9),KPODX(9),NPRADX(9),NPUSOR(9)
+      COMMON /FIELD/ XFIELD(250),YFIELD(250,20),ZFIELD(250,20),
+     1KFIELD,NFX,NFY,FIEL
+      COMMON/ITER/ ITERM,MAXWTR,ITEMAX,GROUND,BET,DIVER,BELOYC,SHEK
+      COMMON/MAXII/ POPMAX(600),H
+      DIMENSION IT(600)
+      REAL*8 MACH
+      LOGICAL LBC,THK,FIEL,NAKRAD,ITEMAX,GROUND
+     *,BET,DIVER,BELOYC,SHEK
+      INTEGER PRENT
+C     WRITE(108,1000) KFUS,NCK,KRADX,KFORX,KPADX,NPRAD,NPUSOR
+C1000 FORMAT(2X,20I4)
+      EM=MACH
+      EM1=EM
+      REWIND 2
+      REWIND 14
+      IF(.NOT.ITEMAX) GO TO 11
+      IF(MAXWTR.NE.ITERM) GO TO 11
+      DO 12 I=1,NBODY
+  12  POPMAX(I)=MACH
+  11  DO 99 I=1,600
+      IT(I)=TT(I)+.5d0
+  99  CONTINUE
+      II=0
+      I1=0
+      KJ=1
+      JMAX=MAX
+      IF (FIEL) READ (2) XFIELD,YFIELD,ZFIELD
+      IF (FIEL) READ (2) LFIELD,NFX,NFY
+      IF (FIEL.AND.LFIELD.EQ.0) GOTO 90
+      EPS=1.0d-6
+      IF (FIEL) NPOINT=NFX*NFY
+      DO 85 I=1,NPOINT
+      ISKIP=IT(I)
+      IF (FIEL) GOTO 8
+      IF (LBC.AND.I.EQ.ISKIP.AND.NPART.EQ.3) GOTO 85
+      II=II+1
+      SINTI=SIN(THET(I))
+      COSTI=COS(THET(I))
+      XPTI=XPT(I)
+      YPTI=YPT(I)
+      ZPTI=ZPT(I)
+      IF (NPART.EQ.1) DI=TAN(DELTA(I))
+      IF (LBC.AND.NPART.EQ.3) DI=0.d0
+      IF (.NOT.LBC.AND.NPART.EQ.3) DI=TAN(DELTI(I))
+      GOTO 9
+   8  SINTI=0.d0
+      COSTI=1.d0
+      DI=0.d0
+      I1=I1+1
+      IF (I1.GT.NFY) KJ=KJ+1
+      IF (I1.GT.NFY) I1=1
+      XPTI=XFIELD(KJ)
+      YPTI=YFIELD(KJ,I1)
+      ZPTI=ZFIELD(KJ,I1)
+    9 DO 10 J=1,NBODY
+      UB(J)=0.d0
+      VI(J)=0.d0
+  10  WI(J)=0.d0
+      J=0
+      J2=0
+      L=0
+      JJS=0
+      ISIGM=0
+      IF (KFUS.LT.1) GOTO 50
+      DO 45 KF=1,KFUS
+      NCK=KFORX(KF)
+      ISIGM=ISIGM+KFORX(KF)*(KRADX(KF)-1)
+      JJS=JJS+KFORX(KF)
+      ISS=ISUMMA(KF,KFORX,KRADX)
+      NROW=KRADX(KF)-1
+      NCOL=KFORX(KF)-1
+      DO 40 NC=1,NCOL
+      L=L+1
+      J1=1+J2
+      J2=J1+NROW-1
+      DO 30 N=1,NROW
+      J=J+1
+      IF(.NOT.ITEMAX) GO TO 13
+      EM1=POPMAX(J)
+  13  DA=TAN(DELTA(J))
+      COST=COS(THETA(J))
+      SINT=SIN(THETA(J))
+      XW=SINT*COSTI
+      XX=COST*SINTI
+      XY=COST*COSTI
+      XZ=SINT*SINTI
+      SINTR=XW-XX
+      SINTL=XW+XX
+      COSTR=XY+XZ
+      COSTL=XY-XZ
+      N1=N+1
+      LN1=NCK*(N1-1)+L+ISS
+      XC1=XC(LN1)
+      YC1=YC(LN1)
+      ZC1=ZC(LN1)
+      XCOR(1)=0.d0
+      YCOR(1)=0.d0
+      ZCOR(1)=0.d0
+      XCOR(2)=XC(LN1+1)-XC1
+      XCOR(3)=0.d0
+      XCOR(4)=XCOR(2)
+      DO 20 K=2,4
+      L1=L+1
+      N1=N+1
+      IF (K.GE.3) N1=N
+      IF (K.EQ.3) L1=L
+      L1N1=NCK*(N1-1)+L1+ISS
+      DELY=YC(L1N1)-YC1
+      DELZ=ZC(L1N1)-ZC1
+      YCOR(K)=DELY*COST+DELZ*SINT
+   20 ZCOR(K)=DELZ*COST-DELY*SINT
+      CX=XCOR(2)
+      XI=XPTI-XC1
+      DY=YPTI-YC1
+      DZ=ZPTI-ZC1
+      YI=DY*COST+DZ*SINT
+      ZI=DZ*COST-DY*SINT
+      XJ=XBT(J)-XC1
+      DYJ=YBT(J)-YC1
+      DZJ=ZBT(J)-ZC1
+      ZJ=DZJ*COST-DYJ*SINT
+      CALL SORPAN (UR,VR,WR,EM1)
+      DY=-YPTI-YC1
+      YI=DY*COST+DZ*SINT
+      ZI=DZ*COST-DY*SINT
+      CALL SORPAN (UL,VL,WL,EM1)
+      IF(.NOT.GROUND) GO TO 25
+      DY=YPTI-YC1
+      DZ=-ZPTI-ZC1
+      YI=DY*COST+DZ*SINT
+      ZI=DZ*COST-DY*SINT
+      CALL SORPAN(UR1,VR1,WR1,EM1)
+      DY=-YPTI-YC1
+      YI=DY*COST+DZ*SINT
+      ZI=DZ*COST-DY*SINT
+      CALL SORPAN(UL1,VL1,WL1,EM1)
+      UB(J)=UL+UL1+UR+UR1+UB(J)
+      VI(J)=VR*COSTR-WR*SINTR-VL*COSTL+WL*SINTL+
+     1VR1*COSTL-WR1*SINTL-VL1*COSTR+WL1*SINTR+VI(J)
+      WI(J)=VR*SINTR+WR*COSTR+VL*SINTL+WL*COSTL-
+     1(VR1*SINTL+WR1*COSTL+VL1*SINTR+WL1*COSTR)+WI(J)
+      VB(J)=VI(J)*COSTI-WI(J)*SINTI
+      WB(J)=WI(J)*COSTI+VI(J)*SINTI
+      GO TO 26
+  25  UB(J)=UL+UR+UB(J)
+      VI(J)=VR*COSTR-WR*SINTR-VL*COSTL+WL*SINTL+VI(J)
+      WI(J)=VR*SINTR+VL*SINTL+WR*COSTR+WL*COSTL+WI(J)
+      VB(J)=VI(J)*COSTI-WI(J)*SINTI
+      WB(J)=WI(J)*COSTI+VI(J)*SINTI
+  26  AN(J)=WI(J)-UB(J)*DI
+      IF (NPART.GT.1) GOTO 30
+      IF (FIEL) GOTO 30
+      IF (NBODY.LE.NMAX) GOTO 30
+      IF (II.LT.J1.OR.II.GT.J2) GOTO 30
+      JS1=J1
+      JS2=J2
+      NS=NROW
+   30 CONTINUE
+   40 CONTINUE
+      L=L+1
+   45 CONTINUE
+   50 CONTINUE
+      JJS=JJS+ISIGM
+      IF (NP.EQ.0) GOTO 56
+      JSUM=0
+      DO 55 KF=1,NP
+      NROW=2*(KPADX(KF)-1)
+      NROW=IABS(NROW)
+      IF(NAKRAD(KF)) NROW=IABS(KPADX(KF))-1
+      NCK=KPODX(KF)
+      ISS=ISUMMA(KF,KPODX,KPADX)
+      IS1=JJS+ISS
+      NCOL=KPODX(KF)-1
+      DO 54 NC=1,NCOL
+      JSUM=JSUM+1
+      L=L+1
+      J1=1+J2
+      J2=J1+NROW-1
+      DO 53 N=1,NROW
+      J=J+1
+      DA=TAN(DELTA(J))
+      COST=COS(THETA(J))
+      SINT=SIN(THETA(J))
+      XW=SINT*COSTI
+      XX=COST*SINTI
+      XY=COST*COSTI
+      XZ=SINT*SINTI
+      SINTR=XW-XX
+      SINTL=XW+XX
+      COSTR=XY+XZ
+      COSTL=XY-XZ
+      N1=N+1
+      LN1=NCK*(N1-1)+IS1+JSUM
+      XC1=XC(LN1)
+      YC1=YC(LN1)
+      ZC1=ZC(LN1)
+      XCOR(1)=0.d0
+      YCOR(1)=0.d0
+      ZCOR(1)=0.d0
+      XCOR(2)=XC(LN1 + 1)-XC1
+      XCOR(3)=0.d0
+      XCOR(4)=XCOR(2)
+      DO 52 K=2,4
+      L1=JSUM+1
+      N1=N+1
+      IF (K.GE.3) N1=N
+      IF (K.EQ.3) L1=JSUM
+      L1N1=NCK*(N1-1)+L1+IS1
+      DELY=YC(L1N1)-YC1
+      DELZ=ZC(L1N1)-ZC1
+      YCOR(K)=DELY*COST+DELZ*SINT
+   52 ZCOR(K)=DELZ*COST-DELY*SINT
+      CX=XCOR(2)
+      XI=XPTI-XC1
+      DY=YPTI-YC1
+      DZ=ZPTI-ZC1
+      YI=DY*COST+DZ*SINT
+      ZI=DZ*COST-DY*SINT
+      XJ=XBT(J)-XC1
+      DYJ=YBT(J)-YC1
+      DZJ=ZBT(J)-ZC1
+      ZJ=DZJ*COST-DYJ*SINT
+      CALL SORPAN (UR,VR,WR,EM1)
+      DY=-YPTI-YC1
+      YI=DY*COST+DZ*SINT
+      ZI=DZ*COST-DY*SINT
+      CALL SORPAN (UL,VL,WL,EM1)
+      IF(.NOT.GROUND) GO TO 61
+      DY=YPTI-YC1
+      DZ=-ZPTI-ZC1
+      YI=DY*COST+DZ*SINT
+      ZI=DZ*COST-DY*SINT
+      CALL SORPAN(UR1,VR1,WR1,EM1)
+      DY=-YPTI-YC1
+      YI=DY*COST+DZ*SINT
+      ZI=DZ*COST-DY*SINT
+      CALL SORPAN(UL1,VL1,WL1,EM1)
+      UB(J)=UL+UL1+UR+UR1+UB(J)
+      VI(J)=VR*COSTR-WR*SINTR-VL*COSTL+WL*SINTL+
+     1VR1*COSTL-WR1*SINTL-VL1*COSTR+WL1*SINTR+VI(J)
+      WI(J)=VR*SINTR+WR*COSTR+VL*SINTL+WL*COSTL-
+     1(VR1*SINTL+WR1*COSTL+VL1*SINTR+WL1*COSTR)+WI(J)
+      VB(J)=VI(J)*COSTI-WI(J)*SINTI
+      WB(J)=WI(J)*COSTI+VI(J)*SINTI
+      GO TO 62
+  61  UB(J)=UL+UR+UB(J)
+      VI(J)=VR*COSTR-WR*SINTR-VL*COSTL+WL*SINTL+VI(J)
+      WI(J)=VR*SINTR+VL*SINTL+WR*COSTR+WL*COSTL+WI(J)
+      VB(J)=VI(J)*COSTI-WI(J)*SINTI
+      WB(J)=WI(J)*COSTI+VI(J)*SINTI
+  62  AN(J)=WI(J)-UB(J)*DI
+      IF (NPART.GT.1) GOTO 53
+      IF (NBODY.LE.NMAX) GOTO 53
+      IF (FIEL) GOTO 53
+      IF (II.LT.J1.OR.II.GT.J2) GOTO 53
+      JS1=J1
+      JS2=J2
+      NS=NROW
+   53 CONTINUE
+   54 CONTINUE
+      L=L+1
+      JSUM=JSUM+1
+   55 CONTINUE
+   56 JMAX=L
+      IF (NBODY.LE.NMAX.OR.NPART.GT.1) GOTO 70
+      IF (FIEL) GOTO 70
+      DO 60 J=1,NBODY
+      IF (J.LT.JS1.OR.J.GT.JS2) GOTO 60
+      K=J-JS1+1
+      DN(K)=AN(J)
+      AN(J)=0.d0
+  60  CONTINUE
+      WRITE (12) (DN(J),J=1,NS)
+  70  CONTINUE
+C===========================================
+      PRINT 140,II
+C===========================================
+      IF (IABS(PRENT).LT.4) GOTO 80
+      WRITE (108,140) II
+      WRITE (108,100) NBODY
+      WRITE (108,130) (UB(J),J=1,NBODY)
+      WRITE (108,110) NBODY
+      WRITE (108,130) (AN(J),J=1,NBODY)
+      IF (NBODY.GT.NMAX.AND.NPART.EQ.1) WRITE (108,120) NS
+      IF (NBODY.GT.NMAX.AND.NPART.EQ.1) WRITE (108,130) (DN(J),J=1,NS)
+   80 IF (.NOT.FIEL) WRITE (10) (UB(J),VB(J),WB(J),J=1,NBODY)
+      IF (FIEL) WRITE (14) (UB(J),VB(J),WB(J),J=1,NBODY)
+      IF (FIEL) GOTO 85
+      WRITE (11) (AN(J),J=1,NBODY)
+   85 CONTINUE
+   90 continue
+      IF (FIEL.AND.LFIELD.NE.0) GOTO 99
+      RETURN
+ 100  FORMAT (2X,10HUB(J),J=1.,I3)
+ 110  FORMAT (2X,10HAN(J),J=1.,I3)
+ 120  FORMAT (2X,10HDN(J),J=1.,I3)
+ 130  FORMAT (1H ,10F10.5)
+ 140  FORMAT (1H ,22HAERODYNAMIC MATRIX  I=,I3)
+      END
+C     ******************************************
+      SUBROUTINE SORPAN (UPM,VPM,WPM,EM1)
+C     ******************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /BODCOM/ EM,SA,CX,XC(4),YC(4),ZC(4),XI,YI,ZI,XJ,ZJ
+      COMMON /SOPPA/ EPS2
+      DIMENSION B(4),SX(4),SM(4),DX(4),DY(4),DZ(4),D(4),E(4),F(4
+     1),G(4),H(4),XPM(4),YMX(4),ZAX(4),AYM(4),RPM2(4)
+      REAL*8 NUM
+      EPS=1.0d-5
+      EP2=EPS*EPS
+      PI=3.14159265d0
+      EPS1=1.0d-14
+      BT2=.5d0*(2.d0-EM*EM-EM1*EM1)
+      BTA=SQRT(ABS(BT2))
+      BA2=BT2*SA*SA
+      TA=1.0d0+BA2
+      IF (TA.LT.0.0d0) GOTO 200
+      SM(3)=0.0d0
+      DO 190 I=1,4
+      ZC(I)=ZJ-SA*(XJ-XC(I))
+      IF (I.LE.2) SM(1)=(YC(2)-YC(1))/CX
+      IF (I.GT.2) SM(3)=(YC(4)-YC(3))/CX
+      SM(2)=SM(1)
+      SM(4)=SM(3)
+      SSM=SIGN(1.d0,SM(I))
+      BM2=BT2*SM(I)*SM(I)
+      TAM=TA+BM2
+      IF (ABS(TAM).LE.EPS) TAM=0.d0
+      SAM=SQRT(ABS(TAM))
+      SAMD=1.d0/SAM
+      CPM=CX*SAM
+      DX(I)=XI-XC(I)
+      DY(I)=YI-YC(I)
+      DZ(I)=ZI-ZC(I)
+      IF (ABS(DX(I)).LE.EPS) DX(I)=0.d0
+      IF (ABS(DY(I)).LE.EPS) DY(I)=0.d0
+      IF (ABS(DZ(I)).LE.EPS) DZ(I)=0.d0
+      RPM2(I)=0.d0
+      DX2=DX(I)*DX(I)
+      DY2=DY(I)*DY(I)
+      DZ2=DZ(I)*DZ(I)
+      DR2=DY2+DZ2
+      IF (I.EQ.2) R22=DR2
+      IF (I.EQ.4) R42=DR2
+      D2=DX2+BT2*DR2
+      D(I)=0.0d0
+      IF (EM.GE.1.d0) DXZ=DX(I)-BTA*ABS(DZ(I))
+      IF (EM.GE.1.d0.AND.DXZ.LT.0.0d0) GOTO 170
+      IF (D2.GT.0.0d0) D(I)=SQRT(D2)
+      XPM(I)=DX(I)+BT2*(SM(I)*DY(I)+SA*DZ(I))
+      YMX(I)=DY(I)-SM(I)*DX(I)
+      ZAX(I)=DZ(I)-SA*DX(I)
+      AYM(I)=SA*DY(I)-SM(I)*DZ(I)
+      IF (ABS(XPM(I)).LE.EPS) XPM(I)=0.d0
+      IF (ABS(YMX(I)).LE.EPS) YMX(I)=0.d0
+      IF (ABS(ZAX(I)).LE.EPS) ZAX(I)=0.d0
+      IF (ABS(AYM(I)).LE.EPS) AYM(I)=0.d0
+      IF(I.LE.2) RPM2(1)=YMX(1)*YMX(1)+ZAX(1)*ZAX(1)+BT2*(AYM(1)*AYM(1))
+      RPM2(2)=RPM2(1)
+      IF(I.GT.2) RPM2(3)=YMX(3)*YMX(3)+ZAX(3)*ZAX(3)+BT2*(AYM(3)*AYM(3))
+      RPM2(4)=RPM2(3)
+      IF (ABS(RPM2(I)).LE.EP2) RPM2(I)=0.d0
+      RPM=SQRT(ABS(RPM2(I)))
+      IF (RPM.LE.EPS) RPM=0.d0
+C     DPM=SAM*D(I) ; F(I)=0.d0
+      DPM=SAM*D(I)
+      IF(EM.GE.1.d0) BXZ=BTA*ABS(DZ(I))/DX(I)
+      IF(EM.GE.1.d0.AND.BXZ.GE.(1.d0-EPS2)) GO TO 170
+      F(I)=0.d0
+      DNOM=-DX(I)*YMX(I)-BT2*DZ(I)*AYM(I)
+      FNUM=D(I)*ZAX(I)
+      IF (ABS(FNUM).LT.EPS1.AND.ABS(DNOM).LT.EPS1) GOTO 10
+      F(I)=ATAN2(FNUM,DNOM)
+      IF (ABS(D(I)).LT.EPS1) F(I)=F(I)*SIGN(1.d0,ZAX(I))
+   10 IF (TAM) 100,90,20
+   20 IF (EM.GT.1.d0.AND.ABS(D(I)).LT.EP2) GOTO 70
+      IF (RPM-EPS) 40,40,30
+   30 NUM=XPM(I)+DPM
+      IF(EM.LT.1.d0) GO TO 26
+      G(I)=0.d0
+      YZBM=DR2*(-BT2)/.99999d0
+      IF(DX2.LT.YZBM)GO TO 27
+  26  G(I)=DLOG(NUM/(BTA*RPM))*SAMD
+  27  CONTINUE
+C  30 NUM=XPM(I)+DPM ; G(I)=DLOG(NUM/(BTA*RPM))*SAMD
+      GO TO 150
+   40 SX(I)=SIGN(1.d0,XPM(I))
+      IF (EM.LT.1.0d0) GOTO 50
+      IF (I.EQ.1.AND.XPM(1).LT.CPM) GOTO 130
+      IF (I.EQ.3.AND.XPM(3).LT.CPM) GOTO 140
+   50 IF (I.EQ.2) SGN12=SX(1)*SX(2)
+      IF (I.EQ.4) SGN34=SX(3)*SX(4)
+      IF (ABS(XPM(I)).LE.EPS) GO TO 70
+   60 IF (I.EQ.2.AND.SGN12.LT.0.0d0) GOTO 130
+      IF (I.EQ.4.AND.SGN34.LT.0.0d0) GOTO 140
+      G(I)=-DLOG(ABS(XPM(I)))*SAMD
+      GOTO 150
+   70 G(I)=0.d0
+      GOTO 150
+   80 G(I)=DLOG(XPM(I))*SAMD
+      GOTO 150
+   90 G(I)=0.d0
+      IF (XPM(I).GT.BTA*RPM) G(I)=D(I)/XPM(I)
+      GOTO 150
+  100 G(I)=0.0d0
+      ARG=SIGN(1.d0,XPM(I))
+      IF (ABS(RPM).GT.EPS1) ARG=XPM(I)/(BTA*RPM)
+      IF (ARG.GE.1.d0) GOTO 150
+      IF (ARG.LE.-1.d0) GOTO 110
+      IF (D(I).GT.0.0d0) G(I)=(PI/2.d0-ASIN(ARG))*SAMD
+      GOTO 150
+  110 AM2=SA*SA+SM(I)*SM(I)
+      TRM1=(SM(I)*DY(I)+SA*DZ(I)+ABS(AYM(I))*SAM)/AM2
+      IF (DX(I).GT.TRM1) GOTO 120
+      F(I)=0.d0
+      IF (SSM.GT.0.0d0) F(I)=PI*SIGN(1.d0,ZAX(I))
+      GOTO 150
+  120 IF (SSM*YMX(I).GE.0.0d0) GOTO 150
+      G(I)=PI*SAMD
+      GOTO 150
+  130 G(1)=500.d0*SAMD
+      IF (EM.LT.1.0d0) G(2)=-G(1)
+      GOTO 160
+  140 G(3)=500.d0*SAMD
+      IF (EM.LT.1.0d0) G(4)=-G(3)
+  150 CONTINUE
+  160 H(I)=0.d0
+      HARG=-BTA*DY(I)
+      IF (ABS(D(I)).LT.EPS1.AND.ABS(HARG).LT.EPS1) GOTO 180
+      IF (EM.LT.1.0d0) H(I)=BTA*.5d0*DLOG((D(I)+HARG)/(D(I)-HARG))
+      IF (EM.GT.1.d0) H(I)=BTA*ATAN2(D(I),HARG)
+      GOTO 180
+  170 F(I)=0.d0
+      G(I)=0.d0
+      H(I)=0.d0
+      AYM(I)=0.d0
+      YMX(I)=0.d0
+      ZAX(I)=0.d0
+      XPM(I)=0.d0
+      DPM=0.d0
+      RPM=0.d0
+      RPM2(2)=RPM2(1)
+      RPM2(4)=RPM2(3)
+  180 E(I)=H(I)+BT2*SM(I)*G(I)
+  190 CONTINUE
+      TAD=1.d0/SQRT(TA)
+      E14=(E(1)-E(2)-E(3)+E(4))*TAD
+      F14=(F(1)-F(2)-F(3)+F(4))*TAD
+      G14=G(1)-G(2)-G(3)+G(4)
+      R4PI=1.0d0/(4.d0*PI)
+      IF (EM.GT.1.d0) R4PI=2.d0*R4PI
+      UPM=R4PI*(E14/BT2-SA*F14)
+      VPM=-R4PI*G14/TAD
+      WPM=R4PI*(F14+SA*E14)
+      RETURN
+  200 WRITE (108,210)
+c      CALL EXIT
+      stop
+  210 FORMAT (1H ,35HBODY PANEL SLOPE EXCEEDS MACH ANGLE)
+      END
+C     *********************************
+      SUBROUTINE LINVEL
+C     *********************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /I1/ IND,NLIN
+      COMMON /PARAM/ NBODY,NWING,NTAIL,LBC,THIK,NN1,MACH,ALPHA,REFA,
+     *SIDES,DUM(6)
+      COMMON /COMPS/ DX,DY,DZ,AL,BL,CL,SUB,BPOS,BCOS,BSIN,ML
+      COMMON /SEG/ NSEG,NROW(20),NCOL(20),NN2,COSS(20),SINS(20),TT(2
+     10),NWT(20),DUM1(140)
+     2,NCSUM
+      COMMON /VELCOM/ NPOINT,NPART,IMAX,JMAX,NMAX,NN3,EM,PRENT,NWTHK,NDU
+     1M(82)
+      COMMON ARRAY(6000),UCOR(30),VCOR(30),WCOR(30),ULOR(30),VLOR(30
+     1),WLOR(30),UCOL(30),VCOL(30),WCOL(30),ULOL(30),VLOL(30),WL
+     2OL(30),UCIR(30),VCIR(30),WCIR(30),ULIR(30),VLIR(30),WLIR(3
+     30),UCIL(30),VCIL(30),WCIL(30),ULIL(30),VLIL(30),WLIL(30),R
+     4COR(30),SCOR(30),TCOR(30),RLOR(30),SLOR(30),TLOR(30),RCOL
+     5(30),SCOL(30),TCOL(30),RLOL(30)
+     6,SLOL(30),TLOL(30),RCIR(30),SCIR(30),TCIR(30),RLIR(30),SLI
+     7R(30),TLIR(30),RCIL(30),SCIL(30),TCIL(30),RLIL(30),SLIL(30
+     8),TLIL(30),AC(600),UC(600),VC(600),WC(600),UT(600),VT(600)
+     9,WT(600),DC(60),TI(600),CHORD(600),DZTDX(600),DUM2(10100)
+      COMMON /FIELD/ XFIELD(250),YFIELD(250,20),ZFIELD(250,20),
+     1KFIELD,NFX,NFY,FIEL
+      DIMENSION XPT(600),YPT(600),ZPT(600),THET(600),DELTA(600),
+     1XC(30,20),YC(30,20),ZC(30,20),BLE(30),UTOR(30),VTOR(30),WT
+     2OR(30),UTOL(30),VTOL(30),WTOL(30),UTIR(30),VTIR(30),WTIR(3
+     30),UTIL(30),VTIL(30),WTIL(30),ASAVE(30),USAVE(30),VSAVE(30
+     4),WSAVE(30),IT(600)
+      EQUIVALENCE (ARRAY,XPT),(ARRAY(601),YPT),(ARRAY(1201),ZPT)
+     1,(ARRAY(1801),THET),(ARRAY(3001),XC),(ARRAY(2401),UTOR),(A
+     2RRAY(2431),VTOR),(ARRAY(2461),WTOR),(ARRAY(2491),UTOL),(AR
+     3RAY(2521),VTOL),(ARRAY(2551),WTOL),(ARRAY(2581),UTIR),(ARR
+     4AY(2611),VTIR),(ARRAY(2641),WTIR),(ARRAY(2671),UTIL),(ARRA
+     5Y(2701),VTIL),(ARRAY(2731),WTIL),(ARRAY(3601),YC),(ARRAY(4
+     6201),ZC),(ARRAY(4801),DELTA),(ARRAY(2761),USAVE),(ARRAY(27
+     791),VSAVE),(ARRAY(2821),WSAVE),(ARRAY(2851),ASAVE)
+      LOGICAL THK,THIK,LBC,SUB,BPOS,SUPTE,FLAG,FIEL
+      INTEGER PRENT
+      REAL*8 MACH
+      DATA PI/3.14159265d0/,EPS/1.0d-6/
+      NLIN=0
+      REWIND 2
+      REWIND 15
+      REWIND 1
+      DO 99 I=1,600
+      IT(I)=TI(I)+.5d0
+   99 CONTINUE
+      IF (FIEL) READ (2) XFIELD,YFIELD,ZFIELD
+      IF (FIEL) READ (2) LFIELD,NFX,NFY
+      IF (FIEL.AND.LFIELD.EQ.0) GOTO 350
+      SUB=MACH.LT.1.0d0
+      THK=THIK
+      FLAG=.FALSE.
+      EPS=1.0d-6
+      NYC=1
+      I1=0
+      K1=1
+      IF (ABS(YC(1,1)).LE.EPS) NYC=0
+      BETA=SQRT(ABS(MACH*MACH-1.0d0))
+      CON=1.d0/(2.d0*PI)
+      IF (SUB) CON=CON/2.d0
+      CONT=2.d0*CON/BETA
+      BCON=BETA*CON
+      BCONT=BETA*CONT
+      II=0
+      IF (FIEL) NPOINT=NFX*NFY
+      DO 345 I=1,NPOINT
+      ISKIP=IT(I)
+      IF (I.EQ.ISKIP.AND.NPART.NE.2.AND..NOT.FIEL) GOTO 345
+C     IF (I.EQ.ISKIP.AND.FIEL) GOTO 345
+      IF (FIEL) GOTO 45
+      II=II+1
+      SINTI=SIN(THET(I))
+      COSTI=COS(THET(I))
+      XI=XPT(I)
+      YI=YPT(I)
+      ZI=ZPT(I)
+      DI=0.d0
+      IF (NPART.EQ.2) DI=BETA*TAN(DELTA(I))
+      GOTO 48
+   45 SINTI=0.d0
+      II=II+1
+      COSTI=1.d0
+      DI=0.d0
+      I1=I1+1
+      IF (I1.GT.NFY) K1=K1+1
+      IF (I1.GT.NFY) I1=1
+      XI=XFIELD(K1)
+      YI=YFIELD(K1,I1)
+      ZI=ZFIELD(K1,I1)
+   48 J=0
+      K=0
+      J2=0
+      M2=1
+      NP=0
+      DO 290 N=1,NSEG
+      NR=NROW(N)
+      NC=NCOL(N)
+      NT=NWT(N)
+      NR1=NR+1
+      NC1=NC+1
+      DO 10 L=1,NR1
+      USAVE(L)=0.d0
+      VSAVE(L)=0.d0
+      WSAVE(L)=0.d0
+   10 ASAVE(L)=0.d0
+      M1=M2
+      IF(NT.NE.0) GO TO 500
+      ISK=1
+      IF(ABS(YC(1,M1+1)-YC(1,M1)).LE.EPS) ISK=0
+      IF(ISK.EQ.0) M1=M1+1
+  500 CONTINUE
+      IF (N.GT.1.AND.NT.NE.0) M1=M2+1
+      IF (N.EQ.1.AND.NYC.NE.0.AND.NT.EQ.0) FLAG=.TRUE.
+      MYC=1
+      IF (ABS(YC(1,M1)).LE.EPS) MYC=0
+      IF (N.GT.1.AND.NT.EQ.1.AND.MYC.NE.0) FLAG=.TRUE.
+      IF (FLAG) THK=.FALSE.
+   20 M2=M1+NC
+      IF (FLAG) M2=M1
+      DO 30 L=1,NR1
+      IF (ABS(YC(L,M2)-YC(L,M1)).LT.EPS) GOTO 1
+C     IF(NT.LT.0) GOTO 1
+      IF (.NOT.FLAG) BLE(L)=(XC(L,M2)-XC(L,M1))/((YC(L,M2)-YC(L,M1))*BET
+     1A)*COSS(N)
+      GOTO 2
+   1  IF(.NOT.FLAG) BLE(L)=(XC(L,M2)-XC(L,M1))/((ABS(ZC(L,M2)-ZC(L,
+     1M1)))*BETA)
+   2  IF (FLAG) BLE(L)=0.d0
+  30  CONTINUE
+      BTE=BLE(NR1)
+      SUPTE=.FALSE.
+      IF (.NOT.SUB.AND.ABS(BTE).LT.1.0d0) SUPTE=.TRUE.
+      COST=COSS(N)
+      IF (FLAG) COST=1.0d0
+      SINT=SINS(N)
+      IF (FLAG) SINT=0.d0
+      BCOS=BETA*COST
+      BSIN=BETA*SINT
+      XW=SINT*COSTI
+      XX=COST*SINTI
+      XY=COST*COSTI
+      XZ=SINT*SINTI
+      SINTR=XW-XX
+      SINTL=XW+XX
+      COSTR=XY+XZ
+      COSTL=XY-XZ
+      DO 80 L=1,NR1
+      DX=XI-XC(L,M1)
+      DY=YI-YC(L,M1)
+      IF (FLAG) DY=YI
+      DZ=ZI-ZC(L,M1)
+      AT=AL
+      BL=BLE(L)
+      CT=CL
+      ML=1
+      IF (L.EQ.NR1) GOTO 40
+      BL1=BLE(L+1)
+      AB=BL-BL1
+      CC=XC(L+1,M1)-XC(L,M1)
+   40 CONTINUE
+      BPOS=BL.GE.0.0d0
+      AL=AB
+      BL=ABS(BL)
+      CL=CC
+      IF (NPART.EQ.4) IND=I
+      CALL VORVEL (UCOR(L),VCOR(L),WCOR(L),ULOR(L),VLOR(L),WLOR(
+     1L),UTOR(L),VTOR(L),WTOR(L))
+      IF (L.EQ.1) GOTO 50
+      ABA=ABS(AL-AT)
+      ACL=ABS(CL-CT)
+      IF (ABA.LE.EPS.AND.ACL.LE.EPS) GOTO 50
+      AL=AT
+      CL=CT
+      ML=2
+      CALL VORVEL (X,X,X,X,X,X,UTOR(L),VTOR(L),WTOR(L))
+      AL=AB
+      CL=CC
+      ML=1
+   50 IF (.NOT.THK) GOTO 60
+      CALL SORVEL (RCOR(L),SCOR(L),TCOR(L),RLOR(L),SLOR(L),TLOR(L))
+   60 DY=-YI-YC(L,M1)
+      IF (FLAG) DY=-YI
+      IF(.NOT.FIEL.AND.NT.LT.0.AND.ABS(YC(L,M1)).LT.EPS) GO TO 7
+      CALL VORVEL (UCOL(L),VCOL(L),WCOL(L),ULOL(L),VLOL(L),WLOL(
+     1L),UTOL(L),VTOL(L),WTOL(L))
+      GO TO 8
+   7  UCOL(L)=0.d0
+      VCOL(L)=0.d0
+      WCOL(L)=0.d0
+      ULOL(L)=0.d0
+      VLOL(L)=0.d0
+      WLOL(L)=0.d0
+      UTOL(L)=0.d0
+      VTOL(L)=0.d0
+      WTOL(L)=0.d0
+  8   IF(L.EQ.1) GOTO 70
+      IF (ABA.LE.EPS.AND.ACL.LE.EPS) GOTO 70
+      AL=AT
+      CL=CT
+      ML=2
+      IF(.NOT.FIEL.AND.NT.LT.0.AND.ABS(YC(L,M1)).LT.EPS) GO TO 9
+      CALL VORVEL (X,X,X,X,X,X,UTOL(L),VTOL(L),WTOL(L))
+      GO TO 11
+   9  UTOL(L)=0.d0
+      VTOL(L)=0.d0
+      WTOL(L)=0.d0
+  11  AL=AB
+      CL=CC
+      ML=1
+   70 IF (.NOT.THK) GOTO 80
+      IF(.NOT.FIEL.AND.NT.LT.0.AND.ABS(YC(L,M1)).LT.EPS) GO TO 12
+      CALL SORVEL (RCOL(L),SCOL(L),TCOL(L),RLOL(L),SLOL(L),TLOL(L))
+      GO TO 80
+  12  RCOL(L)=0.d0
+      SCOL(L)=0.d0
+      TCOL(L)=0.d0
+      RLOL(L)=0.d0
+      SLOL(L)=0.d0
+      TLOL(L)=0.d0
+   80 CONTINUE
+      IF (.NOT.FLAG) M1=M1+1
+      DO 280 M=M1,M2
+      NS=NR
+      IF (SUPTE) NS=NR1
+      IF (FLAG) GOTO 90
+      J1=1+J2
+      J2=J1+NS-1
+   90 DO 150 L=1,NR1
+      UCIR(L)=UCOR(L)
+      VCIR(L)=VCOR(L)
+      WCIR(L)=WCOR(L)
+      UCIL(L)=UCOL(L)
+      VCIL(L)=VCOL(L)
+      WCIL(L)=WCOL(L)
+      ULIR(L)=ULOR(L)
+      VLIR(L)=VLOR(L)
+      WLIR(L)=WLOR(L)
+      ULIL(L)=ULOL(L)
+      VLIL(L)=VLOL(L)
+      WLIL(L)=WLOL(L)
+      UTIR(L)=UTOR(L)
+      VTIR(L)=VTOR(L)
+      WTIR(L)=WTOR(L)
+      UTIL(L)=UTOL(L)
+      VTIL(L)=VTOL(L)
+      WTIL(L)=WTOL(L)
+      IF (.NOT.THK) GOTO 100
+      RCIR(L)=RCOR(L)
+      SCIR(L)=SCOR(L)
+      TCIR(L)=TCOR(L)
+      RCIL(L)=RCOL(L)
+      SCIL(L)=SCOL(L)
+      TCIL(L)=TCOL(L)
+      RLIR(L)=RLOR(L)
+      SLIR(L)=SLOR(L)
+      TLIR(L)=TLOR(L)
+      RLIL(L)=RLOL(L)
+      SLIL(L)=SLOL(L)
+      TLIL(L)=TLOL(L)
+  100 DX=XI-XC(L,M)
+      DY=YI-YC(L,M)
+      DZ=ZI-ZC(L,M)
+      ML=1
+      AT=AL
+      BL=BLE(L)
+      CT=CL
+      IF (L.EQ.NR1) GOTO 110
+      BL1=BLE(L+1)
+      AB=BL-BL1
+      CC=XC(L+1,M)-XC(L,M)
+  110 CONTINUE
+      BPOS=BL.GE.0.0d0
+      AL=AB
+      BL=ABS(BL)
+      CL=CC
+      CALL VORVEL (UCOR(L),VCOR(L),WCOR(L),ULOR(L),VLOR(L),WLOR(L),UTOR(
+     1L),VTOR(L),WTOR(L))
+      IF (L.EQ.1) GOTO 120
+      ABA=ABS(AL-AT)
+      ACL=ABS(CL-CT)
+      IF (ABA.LE.EPS.AND.ACL.LE.EPS) GOTO 120
+      AL=AT
+      CL=CT
+      ML=2
+      CALL VORVEL (X,X,X,X,X,X,UTOR(L),VTOR(L),WTOR(L))
+      AL=AB
+      CL=CC
+      ML=1
+  120 IF (.NOT.THK) GOTO 130
+      CALL SORVEL (RCOR(L),SCOR(L),TCOR(L),RLOR(L),SLOR(L),TLOR(L))
+  130 DY=-YI-YC(L,M)
+      IF(.NOT.FIEL.AND.NT.LT.0.AND.ABS(YC(L,M)).LT.EPS) GO TO 17
+      CALL VORVEL (UCOL(L),VCOL(L),WCOL(L),ULOL(L),VLOL(L),WLOL(
+     1L),UTOL(L),VTOL(L),WTOL(L))
+      GO TO 18
+  17  UCOL(L)=0.d0
+      VCOL(L)=0.d0
+      WCOL(L)=0.d0
+      ULOL(L)=0.d0
+      VLOL(L)=0.d0
+      WLOL(L)=0.d0
+      UTOL(L)=0.d0
+      VTOL(L)=0.d0
+      WTOL(L)=0.d0
+  18  IF (L.EQ.1) GOTO 140
+      IF (ABA.LE.EPS.AND.ACL.LE.EPS) GOTO 140
+      AL=AT
+      CL=CT
+      ML=2
+      IF(.NOT.FIEL.AND.NT.LT.0.AND.ABS(YC(L,M)).LT.EPS) GO TO 19
+      CALL VORVEL (X,X,X,X,X,X,UTOL(L),VTOL(L),WTOL(L))
+      GO TO 21
+  19  UTOL(L)=0.d0
+      VTOL(L)=0.d0
+      WTOL(L)=0.d0
+  21  AL=AB
+      CL=CC
+      ML=1
+  140 IF (.NOT.THK) GOTO 150
+      IF(.NOT.FIEL.AND.NT.LT.0.AND.ABS(YC(L,M)).LT.EPS) GO TO 22
+      CALL SORVEL (RCOL(L),SCOL(L),TCOL(L),RLOL(L),SLOL(L),TLOL(L))
+      GO TO 150
+  22  RCOL(L)=0.d0
+      SCOL(L)=0.d0
+      TCOL(L)=0.d0
+      RLOL(L)=0.d0
+      SLOL(L)=0.d0
+      TLOL(L)=0.d0
+  150 CONTINUE
+      DO 270 L=1,NR1
+      IF (.NOT.FLAG.OR.L.GT.1) GOTO 160
+      JSAVE=J
+      KSAVE=K
+      NPSAVE=NP
+  160 K=K+1
+      IF (SUPTE.OR.L.LT.NR1) GOTO 170
+      IF (.NOT.THK) GOTO 270
+      GOTO 210
+  170 CONTINUE
+      J=J+1
+      IF (L.EQ.NR1) GOTO 200
+      NP=NP+1
+      AMP=1.0d0/CHORD(NP)
+      ULR=ULIR(L)-UTIR(L+1)-ULOR(L)+UTOR(L+1)
+      ULL=ULIL(L)-UTIL(L+1)-ULOL(L)+UTOL(L+1)
+      VLR=VLIR(L)-VTIR(L+1)-VLOR(L)+VTOR(L+1)
+      VLL=VLIL(L)-VTIL(L+1)-VLOL(L)+VTOL(L+1)
+      WLR=WLIR(L)-WTIR(L+1)-WLOR(L)+WTOR(L+1)
+      WLL=WLIL(L)-WTIL(L+1)-WLOL(L)+WTOL(L+1)
+      UCR=UCIR(L)-UCOR(L)-UCIR(L+1)+UCOR(L+1)-ULR
+      UCL=UCIL(L)-UCOL(L)-UCIL(L+1)+UCOL(L+1)-ULL
+      VCR=VCIR(L)-VCOR(L)-VCIR(L+1)+VCOR(L+1)-VLR
+      VCL=VCIL(L)-VCOL(L)-VCIL(L+1)+VCOL(L+1)-VLL
+      WCR=WCIR(L)-WCOR(L)-WCIR(L+1)+WCOR(L+1)-WLR
+      WCL=WCIL(L)-WCOL(L)-WCIL(L+1)+WCOL(L+1)-WLL
+      IF (.NOT.THK) GOTO 180
+      RLR=(RLIR(L)-RLIR(L+1)-RLOR(L)+RLOR(L+1))*AMP
+      RLL=(RLIL(L)-RLIL(L+1)-RLOL(L)+RLOL(L+1))*AMP
+      SLR=(SLIR(L)-SLIR(L+1)-SLOR(L)+SLOR(L+1))*AMP
+      SLL=(SLIL(L)-SLIL(L+1)-SLOL(L)+SLOL(L+1))*AMP
+      TLR=(TLIR(L)-TLIR(L+1)-TLOR(L)+TLOR(L+1))*AMP
+      TLL=(TLIL(L)-TLIL(L+1)-TLOL(L)+TLOL(L+1))*AMP
+  180 IF (L.EQ.1) GOTO 190
+      UCR=RCR+UCR
+      UCL=RCL+UCL
+      VCR=SCR+VCR
+      VCL=SCL+VCL
+      WCR=TCR+WCR
+      WCL=TCL+WCL
+      IF (.NOT.THK) GOTO 220
+      UTR=RTR-RLR
+      UTL=RTL-RLL
+      VTR=STR-SLR
+      VTL=STL-SLL
+      WTR=UCR
+      WTL=UCL
+C     WTR=TTR-TLR ; WTL=TTL-TLL
+      GOTO 220
+  190 IF (.NOT.THK) GO TO 220
+      UTR=RCIR(L)-RCOR(L)-RLR
+      UTL=RCIL(L)-RCOL(L)-RLL
+      VTR=SCIR(L)-SCOR(L)-SLR
+      VTL=SCIL(L)-SCOL(L)-SLL
+      WTR=UCR
+      WTL=UCL
+C     WTR=TCIR(L)-TCOR(L)-TLR ; WTL=TCIL(L)-TCOL(L)-TLL
+      GOTO 220
+  200 UCR=RCR
+      UCL=RCL
+      VCR=SCR
+      VCL=SCL
+      WCR=TCR
+      WCL=TCL
+      IF (.NOT.THK) GOTO 230
+  210 UTR=RLR-RCIR(L)+RCOR(L)
+      UTL=RLL-RCIL(L)+RCOL(L)
+      VTR=SLR-SCIR(L)+SCOR(L)
+      VTL=SLL-SCIL(L)+SCOL(L)
+      WTR=RCR
+      WTL=RCL
+C     WTR=TLR-TCIR(L)+TCOR(L) ; WTL=TLL-TCIL(L)+TCOL(L)
+      GOTO 230
+  220 RCR=ULR
+      RCL=ULL
+      SCR=VLR
+      SCL=VLL
+      TCR=WLR
+      TCL=WLL
+      IF (.NOT.THK) GO TO 230
+      RTR=RLR
+      RTL=RLL
+      STR=SLR
+      STL=SLL
+      TTR=TLR
+      TTL=TLL
+  230 CONTINUE
+      IF (.NOT.SUPTE.AND.L.EQ.NR1) GO TO 260
+      UC(J)=(UCR+UCL)*CON
+      AC(J)=(VCR*SINTR+VCL*SINTL+WCR*COSTR+WCL*COSTL)*BCON
+      BC=(VCR*COSTR-WCR*SINTR-VCL*COSTL+WCL*SINTL)*BCON
+      VC(J)=BC*COSTI-AC(J)*SINTI
+      WC(J)=AC(J)*COSTI+BC*SINTI
+      IF (NPART .EQ.2) AC(J)=AC(J)-DI*UC(J)
+      IF (M.GT.M1) GOTO 250
+      IF (.NOT.FLAG) GOTO 240
+      USAVE(L)=UC(J)
+      VSAVE(L)=VC(J)
+      WSAVE(L)=WC(J)
+      ASAVE(L)=AC(J)
+      GOTO 270
+  240 UC(J)=UC(J)+USAVE(L)
+      VC(J)=VC(J)+VSAVE(L)
+      WC(J)=WC(J)+WSAVE(L)
+      AC(J)=AC(J)+ASAVE(L)
+  250 IF (NWING.LE.NMAX) GO TO 260
+      IF (NPART.EQ.2) GO TO 260
+      IF (II.LT.J1.OR.II.GT.J2) GO TO 260
+      JS1=J1
+      JS2=J2
+      NSS=NS
+  260 CONTINUE
+      IF (.NOT.THK) GOTO 270
+      UT(K)=(UTR+UTL)*CONT
+      AT=(VTR*SINTR+VTL*SINTL+WTR*COSTR+WTL*COSTL)*BCONT
+      BT=(VTR*COSTR-WTR*SINTR-VTL*COSTL+WTL*SINTL)*BCONT
+      VT(K)=BT*COSTI-AT*SINTI
+      WT(K)=AT*COSTI+BT*SINTI
+  270 CONTINUE
+  280 CONTINUE
+      IF (.NOT.FLAG) GO TO 290
+      FLAG=.FALSE.
+      THK=THIK
+      J=JSAVE
+      K=KSAVE
+      NP=NPSAVE
+      GOTO 20
+  290 CONTINUE
+      NWING=J
+      NWTHK=K
+      IF (NWING.LE.NMAX.OR.NPART.EQ.2) GOTO 310
+      DO 300 J=1,NWING
+      IF (J.LT.JS1.OR.J.GT.JS2) GOTO 300
+      K=J-JS1+1
+      DC(K)=AC(J)
+      AC(J)=0.d0
+  300 CONTINUE
+      IF (FIEL) GOTO 310
+      WRITE (12) (DC(J),J=1,NSS)
+  310 CONTINUE
+C===========================================
+      PRINT 370,II
+C===========================================
+      IF (IABS(PRENT).LT.4) GOTO 330
+      WRITE (108,370) II
+      WRITE (108,380) NWING
+      WRITE (108,360) (UC(J),J=1,NWING)
+      WRITE (108,390) NWING
+      WRITE (108,360) (AC(J),J=1,NWING)
+      IF (.NOT.THK) GO TO 320
+      WRITE (108,400) NWTHK
+      WRITE (108,360) (UT(K),K=1,NWTHK)
+      WRITE (108,410) NWTHK
+      WRITE (108,360) (WT(K),K=1,NWTHK)
+  320 CONTINUE
+      IF (NWING.GT.NMAX.AND.NPART.NE.2) WRITE (108,420) NSS
+      IF (NWING.GT.NMAX.AND.NPART.NE.2) WRITE (108,360) (DC(J),J=1,NSS)
+  330 IF (.NOT.THK) GOTO 340
+      IF (FIEL) WRITE (15) (UT(K),VT(K),WT(K),K=1,NWTHK)
+      IF (.NOT.FIEL) WRITE (10) (UT(K),VT(K),WT(K),K=1,NWTHK)
+  340 IF (.NOT.FIEL) WRITE (10) (UC(J),VC(J ),WC(J),J=1,NWING)
+      IF (FIEL) WRITE (15) (UC(J),VC(J),WC(J),J=1,NWING)
+      IF (FIEL) GOTO 345
+      WRITE (11) (AC(J),J=1,NWING)
+  345 CONTINUE
+  350 continue
+      IF (FIEL.AND.LFIELD.NE.0) GOTO 99
+      RETURN
+  360 FORMAT (2X,10F10.5)
+  370 FORMAT (1H ,22HAERODYNAMIC MATRIX, I=,I3)
+  380 FORMAT (2X,10HUC(J),J=1.,I3)
+  390 FORMAT (2X,10HAC(J),J=1.,I3)
+  400 FORMAT (2X,10HUT(K),K=1.,I3)
+  410 FORMAT (2X,10HWT(K),K=1.,I3)
+  420 FORMAT (2X,10HDC(J),J=1.,I3)
+      END
+C     *******************************************************
+      SUBROUTINE SORVEL (UC,VC,WC,UL,VL,WL)
+C     *******************************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /COMPS/ X,DELTAY,DELTAZ,A,B,C,SUB,BPOS,COST,SINT,MML
+      LOGICAL SUB,SUP,BPOS,BNEG,SUPLE
+      DATA EPS1/1.0d-14/,EPS/1.0d-6/,PI/3.14159265d0/
+      SUP=.NOT.SUB
+      SUPLE=.FALSE.
+      BNEG=.NOT.BPOS
+      IF (ABS(B).LE.EPS) B=0.d0
+      SGN=1.0d0
+      IF (SUP) SGN=-1.0d0
+      BT1=SGN+B*B
+      BTERM=SQRT(ABS(BT1))
+      BTERMD=1.d0/BTERM
+      Y=DELTAY*COST+DELTAZ*SINT
+      IF (BNEG) Y=-Y
+      Z=DELTAZ*COST-DELTAY*SINT
+      IF (ABS(Y).LE.EPS) Y=0.d0
+      IF (ABS(Z).LE.EPS) Z=0.d0
+      X2=X*X
+      Y2=Y*Y
+      Z2=Z*Z
+      R2=Y2+Z2
+      R=SQRT(R2)
+      IF (SUB) GOTO 10
+      IF (B.LT.1.0d0) SUPLE=.TRUE.
+      IF (X.LE.0.0d0) GOTO 170
+      D=0.d0
+      IF (X2.GT.R2) D=SQRT(X2-R2)
+      GOTO 20
+   10 D=SQRT(X2+R2)
+   20 CONTINUE
+      T2=B*X+SGN*Y
+      T3=X-B*Y
+      AT3=ABS(T3)
+      IF (AT3.LE.EPS) AT3=0.d0
+      UC=-PI*BTERMD
+      IF (D.GT.0.0d0) GOTO 30
+      IF (Y.LE.B*X) GOTO 170
+      IF (T3.LE.0.0d0) GOTO 170
+      IF (X.LE.(B*Y+BTERM*ABS(Z))) GOTO 170
+      SZ=SIGN(1.d0,Z)
+      UC=-PI/BTERM
+      VC=-B*UC
+      WC=SZ*PI
+      UL=-PI*(T3*BTERMD-Z*SZ)
+      VL=-B*UL
+      WL=-SZ*BTERM*UL
+      GOTO 160
+   30 IF (SUP.AND.X2.LE.R2) GOTO 170
+      IF (ABS(Z).LT.EPS1) GOTO 80
+      DENOM=B*R2-X*Y
+      F1=ATAN2(Z*D,DENOM)
+      IF(SUB) F1=F1-ATAN2(Z,Y)
+      G1=0.d0
+      IF (ABS(BTERM).LT.EPS1) GOTO 60
+      ARG=T2
+      TZ=T3*T3+BT1*Z2
+      IF (TZ.GT.0.0d0) ST3=SQRT(TZ)
+      IF (SUPLE) GOTO 50
+      ARG=ARG+D*BTERM
+      ARG=ARG/ST3
+      IF (ARG.GT.0.0d0) G1=DLOG(ARG)*BTERMD
+      GOTO 70
+   50 G1=(PI/2.d0-ASIN(ARG/ST3))*BTERMD
+      GOTO 70
+  60  IF (ABS(T2).GT.EPS1) G1=D/T2
+  70  G2=DLOG((X+D)/R)
+      G3=0.d0
+      IF (SUB) G3=DLOG(R)
+      C1=D
+      IF (SUB) C1=X+D
+      G=BT1*G1-B*(G2-G3)
+      H=B*G1-G2+G3
+      UC=-G1
+      VC=H
+      WC=F1
+      UL=Z*F1-T3*G1-Y*(G2-G3)
+      VL=T3*H+C1-B*Z*F1
+      WL=T3*F1+Z*G
+      GO TO 160
+   80 CONTINUE
+      F1=0.d0
+      DENOM=-Y*T3
+      IF (ABS(DENOM).GT.EPS1) F1=ATAN2(0.d0,DENOM)
+      IF (SUB.AND.ABS(Y).GT.EPS1) F1=F1-ATAN2(0.d0,Y)
+      IF (SUPLE) GOTO 100
+      G1=0.d0
+      IF (ABS(BTERM).LT.EPS1) GOTO 110
+      IF (AT3.GT.0.0d0) GOTO 90
+      G1=(100.d0+DLOG(2.d0*BT1*ABS(Y)))*BTERMD
+      IF (SUB.AND.Y.LT.0.0d0) G1=-G1
+      GOTO 120
+  90  ARG=T2+D*BTERM
+      ARG=ARG/AT3
+      IF (ARG.GT.0.0d0) G1=DLOG(ARG)*BTERMD
+      GOTO 120
+  100 G1=(PI/2.d0-ASIN(T2/AT3))*BTERMD
+      GOTO 120
+  110 IF (ABS(T2).GT.EPS1) G1=D/T2
+  120 G2=100.d0
+      IF (Y.EQ.0) GOTO 130
+      G2=DLOG((X+D)/ABS(Y))
+      GOTO 140
+  130 IF (ABS(X).GT.EPS1) G2=G2+DLOG(2.d0*ABS(X))
+      IF (X.LT.0.0d0) G2=-G2
+  140 C1=D
+      G3=0.d0
+      IF (.NOT.SUB) GOTO 150
+      C1=X+D
+      IF(ABS(Y).GT.EPS1) G3=DLOG(ABS(Y))
+      IF (ABS(Y).LT.EPS1) G3=-100.d0
+  150 H=B*G1-G2+G3
+      UC=-G1
+      VC=H
+      WC=F1
+      UL=-T3*G1-Y*(G2-G3)
+      VL=T3*H+C1
+      WL=T3*F1
+  160 IF (BPOS) RETURN
+      UC=-UC
+      WC=-WC
+      UL=-UL
+      WL=-WL
+      RETURN
+  170 UC=0.d0
+      VC=0.d0
+      WC=0.d0
+      UL=0.d0
+      VL=0.d0
+      WL=0.d0
+      RETURN
+      END
+C     ********************************************************
+      SUBROUTINE VORVEL (UC,VC,WC,UL,VL,WL,ULT,VLT,WLT)
+C     ********************************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /I1/ IND,NLIN
+      COMMON /PARAM/NBODY,NWING,NTAIL,LBC,THK,NN1,MACH,ALPHA,REFA,
+     *SIDES,DUM(6)
+      COMMON /COMPS/ X,DELTAY,DELTAZ,A,B,C,SUB,BPOS,COST,SINT,ML
+      DIMENSION Q(51),XI(51),QX(51)
+      LOGICAL SUB,SUP,BPOS,SUPLE,LBC,THK
+      REAL*8 MACH
+      DATA EPS/1.0d-6/,EPS1/1.0d-14/,PI/3.14159265d0/
+C      IF (IND.GT.26.AND.IND.LE.28) NLIN=NLIN+1
+      IF (ABS(C).LE.EPS) C=0.d0
+      CC=C*C
+      SUP=.NOT.SUB
+      SUPLE=.FALSE.
+      APO=A
+      IF(.NOT.BPOS) A=-A
+      IF (ABS(B).LE.EPS) B=0.d0
+      AB=A+B
+      SGN=1.0d0
+      IF (SUP) SGN=-1.0d0
+      B1=SGN+B*B
+      SB1=SQRT(ABS(B1))
+      Y=DELTAY*COST+DELTAZ*SINT
+      Z=DELTAZ*COST-DELTAY*SINT
+      IF(.NOT.BPOS) Y=-Y
+      IF (ABS(Y).LE.EPS) Y=0.d0
+      IF (ABS(Z).LE.EPS) Z=0.d0
+      X2=X*X
+      Y2=Y*Y
+      Z2=Z*Z
+      R2=Y2+Z2
+      R=SQRT(R2)
+      IF (SUB) GOTO 10
+      IF (ABS(B).LT.1.0d0) SUPLE=.TRUE.
+      IF (.NOT.(ABS(X).LT.EPS1.OR.X.GT.0.0d0)) GO TO 320
+   10 D=0.d0
+      D2=X2+SGN*R2
+      IF (D2.GT.0.0d0) D=SQRT(D2)
+      AZ=A*Z
+      T1=C-A*Y
+      IF (ABS(T1).LE.EPS) T1=0.d0
+      T2=T1*T1
+      T3=X-B*Y
+      AT3=ABS(T3)
+      IF (AT3.LE.EPS) AT3=0.d0
+      T4=AZ*AZ
+      T5=T2+T4
+      IF (ABS(T5).GT.EPS1) T5=1.d0/T5
+      T6=B*C-A*X
+      T7=T6*T6
+      T8=T7+SGN*(T2+T4)
+      T9=T1*T3+A*B*Z2
+      E=SQRT(ABS(T8))
+      B2=SGN*(C*Y-A*R2)
+      B3=B*X+SGN*Y
+      B4=T5*T6
+      TZ=T3*T3+B1*Z2
+      IF (TZ.GT.0.0d0) ST3=SQRT(TZ)
+      WQ=0.d0
+      IF (ABS(A).LT.EPS1.OR.ML.EQ.2) GOTO 80
+      MAX=11
+      XI(1)=0.d0
+      EL=1.0d0
+      IF (SUP.AND.(.NOT.(ABS(X-C).LT.EPS1.OR.(X-C).GT.0.D0))) EL=X/C
+      DXI=EL/DFLOAT(MAX-1)
+      XO=0.d0
+      IF (ABS(T1).GT.EPS1) XO=T3/T1
+      DO 70 M=1,MAX
+      Q(M)=0.d0
+      IF (M.GT.1) XI(M)=XI(M-1)+DXI
+      DX=X-XI(M)*C
+      IF (SUP.AND.ABS(DX).LT.EPS1) DX=0.0D0
+      DX2=DX*DX
+      BX=B-A*XI(M)
+      BX2=BX*BX
+      BX1=SGN+BX2
+      SBX=SQRT(ABS(BX1))
+      SDX=0.d0
+      DXR=DX2+SGN*R2
+      IF (DXR.GT.0.0d0) SDX=SQRT(DXR)
+      IF (ABS(SDX).LT.EPS1) GOTO 20
+      ARG=SGN*Y+BX*DX
+      IF (ABS(SBX).LT.EPS1) GO TO 40
+      TZI=(T3-XI(M)*T1)**2+BX1*Z2
+      IF (ABS(TZI).LT.EPS1) GOTO 50
+      STZ=SQRT(TZI)
+      DD=BX-1.D0
+      IF (SUP.AND.(.NOT.(ABS(DD).LT.EPS1.OR.DD.GT.0.D0)))
+     1GO TO 30
+      ARG=(ARG+SBX*SDX)/STZ
+      IF (SUP) ARG=ABS(ARG)
+      IF (.NOT.(ABS(ARG).LT.EPS1.OR.ARG.LT.0.0d0))
+     1Q(M)=DLOG(ARG)*BX/SBX
+      GOTO 60
+   20 CONTINUE
+      DD=T1-BX*T6
+      IF ((.NOT.(ABS(DD).LT.EPS1.OR.DD.GT.0.D0))
+     1.AND.(.NOT.(ABS(T8).LT.EPS1.OR.T8.GT.0.0d0))) GO TO 60
+      DD=Y-BX*DX
+      IF (ABS(DD).LT.EPS1.OR.DD.LT.0.D0) GO TO 60
+      DD=DX-(BX*Y+SBX*ABS(Z))
+      IF (.NOT.(ABS(DD).LT.EPS1.OR.DD.GT.0.D0)) GO TO 60
+      Q(M)=PI*BX/SBX
+      GOTO 60
+   30 CONTINUE
+      ARG=ARG/STZ
+      DD=ARG-1.d0
+      IF (.NOT.(ABS(DD).LT.EPS1.OR.DD.LT.0.D0))  GO TO 60
+      DD=ARG+1.d0
+      IF (ABS(DD).LT.EPS1.OR.DD.LT.0.D0) GOTO 20
+      Q(M)=(PI/2.d0-ASIN(ARG))*BX/SBX
+      GOTO 60
+   40 CONTINUE
+      Q(M)=SDX*BX/ARG
+      GO TO 60
+   50 CONTINUE
+      Q(M)=100.d0
+      IF (.NOT.(ABS(Y).LT.EPS1.OR.Y.GT.0.0d0))
+     1Q(M)=-DLOG(ABS(Y))*BX/SBX
+   60 CONTINUE
+      QX(M)=Q(M)*XI(M)
+   70 CONTINUE
+      CALL TRAP (XI,QX,WQ,MAX)
+   80 CONTINUE
+      IF (.NOT.SUPLE) GO TO 100
+      G3=0.d0
+      IF (.NOT.(ABS(D).LT.EPS1.OR.D.LT.0.0d0)) GOTO 100
+      DD=Y-B*X
+      IF (ABS(DD).LT.EPS1.OR.DD.LT.0.D0) GOTO 320
+      DD=X-(B*Y+SB1*ABS(Z))
+      IF (.NOT.(ABS(DD).LT.EPS1.OR.DD.GT.0.D0)) GOTO 320
+      SZ=SIGN(1.d0,Z)
+      PZ=PI*SZ
+      UC=PZ
+      VC=-B*PZ
+      WC=-SZ*SB1*PZ
+      IF (.NOT.(ABS(T8).LT.EPS1.OR.T8.LT.0.0d0)) E=0.d0
+      SL=PI*T5*(SZ*T9-Z*E)
+      TL=SZ*E*T5*SL
+      IF (.NOT.(ABS(T8).LT.EPS1.OR.T8.LT.0.0d0))
+     1TL=PI*T5*T5*T8*ABS(Z)
+      IF (ML.EQ.2) GOTO 90
+      UL=SL
+      VL=-((B+T1*B4)*SL-AZ*TL)/2.d0
+      WL=AZ*B4*SL-T1*TL+A*WQ
+      IF (.NOT.LBC.AND.ML.EQ.1) GO TO 310
+   90 ULS=SL+PZ
+      ULT=ULS
+      TT=SZ*E*T5*ULS
+      IF (.NOT.(ABS(T8).LT.EPS1.OR.T8.LT.0.0d0)) TT=TL
+      VLT=(A*PZ-(AB+T1*B4)*ULS+AZ*TT)/2.d0
+      WLT=AZ*B4*ULS-T1*TT
+      GO TO 310
+  100 IF (SUP.AND.ABS(D).LT.EPS1) GOTO 320
+      IF (ABS(Z).LT.EPS1) GOTO 180
+      DENOM=B*R2-X*Y
+      F1=ATAN2(Z*D,DENOM)
+      IF (SUB) F1=F1-ATAN2(Z,Y)
+      G1=0.d0
+      IF (ABS(T8).LT.EPS1) GOTO 130
+      IF (ABS(C).LT.EPS1) GOTO 110
+      ARG=X*T6+B2
+      IF (.NOT.(ABS(T8).LT.EPS1.OR.T8.GT.0.0d0)) GOTO 120
+      ARG=(ARG+D*E)/(ST3*C)
+      IF (SUP) ARG=ABS(ARG)
+      IF (.NOT.(ABS(ARG).LT.EPS1.OR.ARG.LT.0.d0)) G1=DLOG(ARG)
+      GOTO 130
+  110 IF (ABS(ST3).GT.EPS1) G1=DLOG(ST3)
+      IF(.NOT.(ABS(A).LT.EPS1.OR.A.GT.0.0d0)) G1=-G1
+      GOTO 130
+  120 ARG=ARG/(ST3*C)
+      DD=ABS(ARG)-1.D0
+      IF (.NOT.(ABS(DD).LT.EPS1.OR.DD.LT.0.d0)) GOTO 130
+      G1=-(PI/2.d0-ASIN(ARG))
+  130 H1=0.d0
+      IF (LBC.AND.ML.EQ.2) GO TO 150
+      IF (ABS(SB1).LT.EPS1) GOTO 150
+      ARH=B3
+      IF (SUPLE) GOTO 140
+      ARH=(ARH+D*SB1)/ST3
+      IF (.NOT.(ABS(ARH).LT.EPS1.OR.ARH.LT.0.d0)) H1=DLOG(ARH)
+      GOTO 150
+  140 H1=-(PI/2.d0-ASIN(ARH/ST3))
+  150 G2=DLOG((X+D)/R)
+      G3=0.d0
+      IF (SUB) G3=DLOG(R)
+      C1=D
+      IF (SUB) C1=X+C1
+      C2=C1/R2
+      H=SB1*H1-B*(G2-G3)
+      IF (ABS(SB1).LT.EPS1) H2=B*D/B3-G2+G3
+      IF (ABS(SB1).GT.EPS1) H2=B*H1/SB1-G2+G3
+      UC=F1
+      VS=-B*F1+Z*C2
+      WS=H-Y*C2
+      VC=VS
+      WC=WS
+      IF (ABS(C).LT.EPS1) C2=0.d0
+      C3=0.d0
+      C4=0.d0
+      C5=G2/2.d0
+      C6=0.d0
+      IF (ABS(C).LT.EPS1) GO TO 160
+      C3=(X*C2+SGN*G2)/(2.d0*C)
+      C4=((X2-SGN*R2/2.d0)*G2-1.5d0*X*D)/(2.d0*CC)
+      C5=(D-X*G2)/C
+  160 CONTINUE
+      WQ=WQ-C4
+      G=E*G1-T6*G2
+      SL=T5*(T9*F1+Z*G)
+      TL=-B*D
+      IF (ABS(C).GT.EPS1) TL=(B2*G2+T6*D)/C
+      TL=-T5*(T5*(G*T9-Z*T8*F1)+TL)
+      IF (ML.EQ.2) GOTO 170
+      UL=SL
+      VL=-((B+T1*B4)*SL-AZ*TL)/2.d0+Z*C3
+      WL=AZ*B4*SL-T1*TL-Y*C3+A*WQ
+      IF (.NOT.LBC.AND.ML.EQ.1) GO TO 310
+  170 ULS=SL+F1
+      ULT=ULS
+      TLT=TL-T5*G
+      WQT=C5-C4-G3/2.d0
+      VLS=(A*F1-(AB+T1*B4)*ULS+AZ*TLT)/2.d0+Z*(C2+C3)
+      VLT=VLS
+      WLS=AZ*B4*ULS-T1*TLT-Y*(C2+C3)+A*WQT
+      WLT=WLS
+      GO TO 310
+  180 CONTINUE
+      F1=0.d0
+      DENOM=-Y*T3
+      IF (ABS(DENOM).GT.EPS1) F1=ATAN2(0.d0,DENOM)
+      IF (SUB.AND.ABS(Y).GT.EPS1) F1=F1-ATAN2(0.d0,Y)
+      G1=0.d0
+      IF (ABS(T8).LT.EPS1) GOTO 220
+      IF (ABS(C).LT.EPS1) GOTO 200
+      IF (.NOT.(ABS(T8).LT.EPS1.OR.T8.GT.0.0d0)) GOTO 210
+      IF (.NOT.(ABS(AT3).LT.EPS1.OR.AT3.LT.0.d0)) GOTO 190
+      IF (ABS(Y).LT.EPS1.OR.(ABS(T1).LT.EPS1.OR.T1.LT.0.d0))
+     1GO TO 220
+      G1=DLOG(T1*ABS(Y))
+      IF (SUB.AND.(.NOT.(ABS(Y).LT.EPS1.OR.Y.GT.0.d0))) G1=-G1
+      IF (.NOT.(ABS(Y).LT.EPS1.OR.Y.LT.0.0d0)) G1=100.d0+G1
+      GOTO 220
+  190 ARG=(X*T6+SGN*Y*T1+D*E)/(AT3*C)
+      IF (SUP) ARG=ABS(ARG)
+      IF (.NOT.(ABS(ARG).LT.EPS1.OR.ARG.LT.0.0d0)) G1=DLOG(ARG)
+      GOTO 220
+  200 IF (ABS(AT3).GT.EPS1) G1=DLOG(AT3)
+      IF(.NOT.(ABS(A).LT.EPS1.OR.A.GT.0.0d0)) G1=-G1
+      GOTO 220
+  210 ARG=(X*T6-Y*T1)/(AT3*C)
+      DD=ABS(ARG)-1.D0
+      IF (.NOT.(ABS(DD).LT.EPS1.OR.DD.LT.0.0d0)) GOTO 220
+      G1=-(PI/2.d0-ASIN(ARG))
+  220 H1=0.d0
+      IF (LBC.AND.ML.EQ.2) GO TO 250
+      IF (ABS(SB1).LT.EPS1) GOTO 250
+      IF (SUPLE) GOTO 240
+      IF (.NOT.(ABS(AT3).LT.EPS1.OR.AT3.LT.0.0d0)) GOTO 230
+      IF (ABS(Y).LT.EPS1) GOTO 250
+      H1= DLOG(ABS(Y))
+      IF (SUB.AND.(.NOT.(ABS(Y).LT.EPS1.OR.Y.GT.0.d0))) H1=-H1
+      IF (.NOT.(ABS(Y).LT.EPS1.OR.Y.LT.0.0d0)) H1=100.d0+H1
+      GOTO 250
+  230 CONTINUE
+      ARH=(B3+D*SB1)/AT3
+      IF (.NOT.(ABS(ARH).LT.EPS1.OR.ARH.LT.0.d0)) H1=DLOG(ARH)
+      GOTO 250
+  240 H1=-(PI/2.d0-ASIN(B3/AT3))
+  250 G2=100.d0
+      IF (ABS(Y).GT.EPS1) GO TO 260
+      IF (ABS(X).GT.EPS1) G2=G2+DLOG(2.d0*ABS(X))
+      IF (.NOT.(ABS(X).LT.EPS1.OR.X.GT.0.0d0)) G2=-G2
+      GO TO 270
+  260 G2=DLOG((X+D)/ABS(Y))
+  270 G3=0.d0
+      C1=D
+      IF (.NOT.SUB) GO TO 280
+      C1=X+D
+      G3=-100.d0
+      IF (ABS(Y).GT.EPS1) G3=DLOG(ABS(Y))
+  280 C2=0.d0
+      IF (ABS(Y).GT.EPS1) C2=C1/Y2
+      H=SB1*H1-B*(G2-G3)
+      IF (ABS(SB1).LT.EPS1) H2=B*D/B3-G2+G3
+      IF (ABS(SB1).GT.EPS1) H2=B*H1/SB1-G2+G3
+      UC=F1
+      VS=-B*F1
+      WS=H-Y*C2
+      VC=VS
+      WC=WS
+      IF (ABS(C).LT.EPS1) C2=0.d0
+      C4=0.d0
+      C5=G2/2.d0
+      C6=0.d0
+      IF (ABS(C).LT.EPS1) GOTO 290
+      C3=(X*C2+SGN*G2)/2.d0
+      C4=((X2-SGN*Y2/2.d0)*G2-1.5d0*X*D)/(2.d0*CC)
+      C5=(D-X*G2)/C
+  290 CONTINUE
+      WQ=WQ-C4
+      WQT=C5-C4-G3/2.d0
+      IF (ABS(T1).GT.EPS1) GO TO 300
+      WL=A*WQ
+      WLS=A*WQT
+      WLT=WLS
+      GO TO 330
+  300 SL=T3*F1/T1
+      UL=SL
+      VL=-(B+T6/T1)*SL/2.d0
+      G=E*G1-T6*G2
+      TL=T3*T5*G
+      IF (ABS(C).LT.EPS1) TL=TL-B*D/T1
+      IF (ABS(C).GT.EPS1) TL=TL+(T6*D/T1+Y*(SGN*G2-C3))/C
+      WL=TL+A*WQ
+      IF (.NOT.LBC.AND.ML.EQ.1) GOTO 310
+      ULS=SL+F1
+      VLS=(A*F1-(AB+T6/T1)*ULS)/2.d0
+      WLS=TL+G/T1-Y*C2+A*WQT
+      ULT=ULS
+      VLT=VLS
+      WLT=WLS
+  310 IF(BPOS)  RETURN
+      UC=-UC
+      WC=-WC
+      UL=-UL
+      WL=-WL
+      ULT=-ULT
+      WLT=-WLT
+      A=APO
+      RETURN
+  320 UC=0.d0
+      VC=0.d0
+      WC=0.d0
+      WL=0.d0
+      WLT=0.d0
+  330 UL=0.d0
+      VL=0.d0
+      ULT=0.d0
+      VLT=0.d0
+      GO TO 310
+      END
+C     **********************
+      SUBROUTINE SULVE
+C     **********************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /PARAM/NBODY,NWING,NTAIL,LBC,THK,NN1,MACH,ALPHA,REFA,
+     *SIDES,DUM(6)
+      COMMON ARRAY(6000),U(600),V(600),W(600),A(60,60),DUD(300),
+     1GW(600),GB(600),DZTDX(600),DUM5(10100)
+      COMMON /SEG/ NSEG,NR(20),NC(20),NN2,COSS(20),SINS(20),DUM1(20),
+     1NDUM(20),DUM2(140)
+     2,NCSUM
+      COMMON /VELCOM/ NPOINT,NPART,IMAX,JMAX,NMAX,NN3,EX,PRENT,NWTHK,NDU
+     1(82)
+      COMMON /FORM/ CN,CT,CM,CNB,CTB,CMB,CNS(20),CTS(20),CMS(20)
+      COMMON /MATCOM/ MATIN
+      COMMON /TOLA/ ITT(600),NGRI
+      COMMON /SOV/ EPSIL,NITER
+      COMMON/ITER/ITERM,MAXWTR,ITEMAX,GROUND,BET,DIVER,BELOYC,SHEK
+      DIMENSION UA(600),VA(600),WA(600),CP(600),NS(600),CHORD(60
+     10),THET(600),DELTA(600),NB(600),NW(600),NT(600),DEL(600),C
+     2OSTH(600)
+      EQUIVALENCE (UA,A),(VA,A(601)),(WA,A(1201)),(CP,A(1801)),(
+     1NS,A(2401)),(ARRAY(1801),THET),(ARRAY(2401),DELTA),(NW,U),
+     2(NB,V),(NT,W),(ARRAY(3601),CHORD),(GW,DEL),(GB,COSTH)
+      REAL*8 MACH,NB,NW,NT,NS,NRS
+      INTEGER COMPT,PRENT
+      LOGICAL LBC,THK,ITEMAX,GROUND,BET,DIVER,BELOYC,SHEK
+      EM=MACH
+      NPASS=0
+      PI=3.14159265d0
+      REWIND 9
+      REWIND 10
+      REWIND 1
+      ALP=ALPHA/57.2957795d0
+      SINAL=SIN(ALP)
+      COSAL=COS(ALP)
+      IF (NWING.EQ.0) GOTO 20
+      READ (9) ARRAY,CHORD,DZTDX
+      IF (LBC) READ (13) DEL,COSTH
+      REWIND 13
+      DO 10 I=1,NWING
+      IF (LBC) TANDEL=DEL(I)
+      IF (.NOT.LBC) TANDEL=TAN(DELTA(I))
+      IF (LBC) COST=COSTH(I)
+      IF (.NOT.LBC) COST=COS(THET(I))
+   10 NW(I)=COSAL*TANDEL-SINAL*COST
+   20 IF (NBODY.EQ.0) GOTO 71
+      READ (9) ARRAY
+      DO 30 I=1,NBODY
+      TANDEL=TAN(DELTA(I))
+   30 NB(I)=COSAL*TANDEL-SINAL*COS(THET(I))
+      IF (.NOT.LBC.OR.NWING.EQ.0) GOTO 70
+      IF (.NOT.THK) GOTO 70
+      DO 40 I=1,NBODY
+      READ (10) (UA(J),VA(J),WA(J),J=1,NBODY)
+   40 CONTINUE
+      DO 60 I=1,NBODY
+      READ (10) (UA(J),VA(J),WA(J),J=1,NWTHK)
+      READ (10) (UADUM,VADUM,WADUM,J=1,NWING)
+      US=0.d0
+      VS=0.d0
+      WS=0.d0
+      SINT=SIN(THET(I))
+      COST=COS(THET(I))
+      DO 50 J=1,NWTHK
+      US=US+UA(J)*DZTDX(J)
+      VS=VS+VA(J)*DZTDX(J)
+   50 WS=WS+WA(J)*DZTDX(J)
+      NS(I)=WS*COST-VS*SINT-US*TAN(DELTA(I))
+   60 NB(I)=NB(I)-NS(I)*COSAL
+      DO 51 I=1,NWING
+      READ (10) (UADUM,VADUM,WADUM,J=1,NBODY)
+  51  CONTINUE
+  71  IF(.NOT.THK.OR..NOT.LBC) GO TO 70
+      I=0
+      II=0
+      DO 61 L1=1,NSEG
+      NR1=NR(L1)*NC(L1)
+      NR1=NR1+NC(L1)
+      COST=COSS(L1)
+      SINT=SINS(L1)
+      DO 61 I1=1,NR1
+      II=II+1
+      ISKIP=ITT(II)
+      IF (II.EQ.ISKIP) GO TO 61
+      I=I+1
+      READ (10) (UA(J),VA(J),WA(J),J=1,NWTHK)
+      US=0.d0
+      VS=0.d0
+      WS=0.d0
+      J=0
+      DO 62 L2=1,NSEG
+      NR2=(NR(L2)+1)*NC(L2)
+      DO 62 J2=1,NR2
+      J=J+1
+      IF (L2.EQ.L1) GO TO 62
+      US=US+UA(J)*DZTDX(J)
+      VS=VS+VA(J)*DZTDX(J)
+      WS=WS+WA(J)*DZTDX(J)
+  62  CONTINUE
+      NRS=WS*COST-VS*SINT
+      NW(I)=NW(I)-NRS*COSAL
+      READ (10) (UADUM,VADUM,WADUM,J=1,NWING)
+  61  CONTINUE
+      REWIND 10
+   70 CONTINUE
+      IF (NBODY.LE.NMAX.AND.NWING.LE.NMAX) GO TO 80
+      IF (MATIN.EQ.1) CALL DIAGIN
+      REWIND 12
+      GOTO 90
+   80 CALL PARTIN
+      IF (NBODY.EQ.0.OR.NWING.EQ.0) GO TO 100
+   90 CALL ITRATE
+  100 CONTINUE
+      REWIND 9
+      IF (NBODY.EQ.0) GO TO 99
+      WRITE(1) (GB(II),II=1,NBODY)
+   99 IF (NWING.EQ.0) GOTO 110
+      WRITE (1) DZTDX
+      WRITE (1) (GW(II),II=1,NWING)
+      READ (9) ARRAY,CHORD,DZTDX
+  110 CONTINUE
+      NPASS=NPASS+1
+      IF (NBODY.EQ.0) GO TO 210
+      DO 120 I=1,NBODY
+      U(I)=0.d0
+      V(I)=0.d0
+      W(I)=0.d0
+  120 CONTINUE
+      DO 130 I=1,NBODY
+      READ (10) (UA(J),VA(J),WA(J),J=1,NBODY)
+      IF (NPASS.EQ.2) GOTO 130
+      DO 131 J=1,NBODY
+      U(I)=U(I)+UA(J)*GB(J)
+      V(I)=V(I)+VA(J)*GB(J)
+      W(I)=W(I)+WA(J)*GB(J)
+  131 CONTINUE
+  130 CONTINUE
+      IF (NPASS.EQ.1) READ (9) ARRAY
+      DO 180 I=1,NBODY
+      IF (NWING.EQ.0) GO TO 170
+      IF (.NOT.THK) GOTO 150
+      READ (10) (UA(J),VA(J),WA(J),J=1,NWTHK)
+      IF (NPASS.EQ.2) GOTO 150
+      DO 140 J=1,NWTHK
+      U(I)=U(I)+UA(J)*DZTDX(J)
+      V(I)=V(I)+VA(J)*DZTDX(J)
+      W(I)=W(I)+WA(J)*DZTDX(J)
+  140 CONTINUE
+  150 READ (10) (UA(J),VA(J),WA(J),J=1,NWING)
+      IF (NPASS.EQ.2) GOTO 180
+      DO 160 J=1,NWING
+      U(I)=U(I)+UA(J)*GW(J)
+      V(I)=V(I)+VA(J)*GW(J)
+      W(I)=W(I)+WA(J)*GW(J)
+  160 CONTINUE
+  170 CONTINUE
+      NS(I)=W(I)*COS(THET(I))-V(I)*SIN(THET(I))-U(I)*TAN(DELTA(I))
+  180 CONTINUE
+      IF (NPASS.EQ.2) GO TO 210
+      IF (IABS(PRENT).LT.2) GOTO 200
+      WRITE (108,340) EM,ALPHA
+      WRITE (108,390)
+      DO 190 N=1,NBODY
+  190 WRITE (108,410) N,GB(N),U(N),V(N),W(N),NS(N)
+  200 CONTINUE
+      WRITE (108,101)
+  101 FORMAT (/,20X,'LOCAL MACH ON THE BODY',/)
+      COMPT=1
+      CALL PRESS (NBODY,EM,ALP,U,V,W,CP,CPSTAG,CPCRIT,CPVAC,COMPT,
+     *LBC,NPASS)
+      CALL FORMOM (NBODY,NPASS,ALP,COMPT)
+  210 IF (NWING.EQ.0) GO TO 330
+      DO 220 I=1,NWING
+      U(I)=0.d0
+      V(I)=0.d0
+  220 W(I)=0.d0
+      IF (NBODY.EQ.0) GOTO 240
+      DO 230 I=1,NWING
+      READ (10) (UA(J),VA(J),WA(J),J=1,NBODY)
+      DO 230 J=1,NBODY
+      U(I)=U(I)+UA(J)*GB(J)
+      V(I)=V(I)+VA(J)*GB(J)
+      W(I)=W(I)+WA(J)*GB(J)
+  230 CONTINUE
+  240 SGN=1.0d0
+      IF (LBC.AND.NPASS.EQ.2) SGN=-1.0d0
+      I=0
+      II=0
+      DO 270 L3=1,NSEG
+      NR3=NR(L3)*NC(L3)
+      IF(.NOT.LBC) NR3=2*NR3
+      NR3=NR3+NC(L3)
+      COST=COSS(L3)
+      SINT=SINS(L3)
+      DO 270 I3=1,NR3
+      II=II+1
+      ISKIP=ITT(II)
+      IF (ISKIP.EQ.II) GO TO 270
+      I=I+1
+      IF(.NOT.THK) GO TO 260
+      READ (10) (UA(J),VA(J),WA(J),J=1,NWTHK)
+      J=0
+      DO 250 L4=1,NSEG
+      NR4=(NR(L4)+1)*NC(L4)
+      DO 250 I4=1,NR4
+      J=J+1
+      U(I)=U(I)+UA(J)*DZTDX(J)
+      V1=VA(J)*DZTDX(J)
+      W1=WA(J)*DZTDX(J)
+      IF (L3.NE.L4.OR.NPASS.NE.2) GO TO 251
+      VN=V1*COST+W1*SINT
+      WN=V1*SINT-W1*COST
+      V1=VN*COST-WN*SINT
+      W1=VN*SINT+WN*COST
+  251 CONTINUE
+      V(I)=V(I)+V1
+      W(I)=W(I)+W1
+  250 CONTINUE
+  260 READ (10) (UA(J),VA(J),WA(J),J=1,NWING)
+      J=0
+      IJ=0
+      DO 272 L5=1,NSEG
+      NR5=NR(L5)*NC(L5)
+      IF(.NOT.LBC) NR5=NR5*2
+      NR5=NR5+NC(L5)
+      DO 272 I5=1,NR5
+      IJ=IJ+1
+      ISKIP=ITT(IJ)
+      IF(ISKIP.EQ.IJ) GO TO 272
+      J=J+1
+      U1=UA(J)*GW(J)
+      V1=VA(J)*GW(J)
+      W1=WA(J)*GW(J)
+      IF(L3.NE.L5.OR.NPASS.NE.2) GO TO 271
+      VN=-V1*COST-W1*SINT
+      WN=-V1*SINT+W1*COST
+      V1=VN*COST-WN*SINT
+      W1=VN*SINT+WN*COST
+      U1=-U1
+  271 CONTINUE
+      U(I)=U(I)+U1
+      V(I)=V(I)+V1
+      W(I)=W(I)+W1
+  272 CONTINUE
+  270 CONTINUE
+      IF (IABS(PRENT).LT.2) GO TO 310
+      IF (.NOT.LBC) GOTO 280
+      IF (NPASS.EQ.1) WRITE (108,360) EM,ALPHA
+      IF (NPASS.EQ.2) WRITE (108,370) EM,ALPHA
+      GOTO 290
+  280 WRITE (108,350) EM,ALPHA
+  290 WRITE (108,400)
+      DO 300 N=1,NWING
+      WRITE (108,410) N,GW(N),U(N),V(N),W(N)
+  300 CONTINUE
+  310 CONTINUE
+C     WRITE (5) (U(II),V(II),W(II),II=1,NWING)
+      IF (NPASS.EQ.1) WRITE (108,102)
+      IF (NPASS.EQ.2) WRITE (108,103)
+      COMPT=2
+      CALL PRESS (NWING,EM,ALP,U,V,W,CP,CPSTAG,CPCRIT,CPVAC,COMPT,
+     *LBC,NPASS)
+      CALL FORMOM (NWING,NPASS,ALP,COMPT)
+      IF (LBC.AND.NPASS.EQ.1) GOTO 320
+      GOTO 330
+  320 REWIND 10
+      GOTO 110
+  330 CONTINUE
+      WRITE (108,380) CPSTAG,CPCRIT,CPVAC
+      REWIND 9
+      REWIND 10
+C     REWIND 5
+      RETURN
+  102 FORMAT (/,10X,'LOCAL MACH ON THE WING UPPER SURFACE',/)
+  103 FORMAT (/,10X,'LOCAL MACH ON THE WING LOWER SURFACE',/)
+  340 FORMAT (1H ,25HVELOCITIES ON BODY, MACH=,F5.3,3X,6HALPHA=,F7.3//)
+  350 FORMAT (1H ,25HVELOCITIES ON WING, MACH=,F5.3,3X,6HALPHA=,F7.3//)
+  360 FORMAT (1H ,39HVELOCITIES ON WING UPPER SURFASE, MACH=,F5.3,3X,
+     16HALPHA=,F7.3//)
+  370 FORMAT (1H ,39HVELOCITIES ON WING LOWER SURFACE, MACH=,F5.3,3X,
+     16HALPHA=,F7.3//)
+  380 FORMAT (1H ,8HCPSTAG =,F10.5,3X,8HCPCRIT =,F10.5,3X,7HCPVAC =,F10.
+     15)
+  390 FORMAT (1X,5HPANEL,10X,6HSOURSE,10X,5HAXIAL,10X,7HLATERAL,10X,8HVE
+     1RTICAL,10X,6HNORMAL/2X,3HNO.,10X,8HSTRENGTH,7X,8HVELOCITY,9X,
+     28HVELOCITY,9X,8HVELOCITY,9X,8HVELOCITY)
+  400 FORMAT (1X,5HPANEL,10X,6HVORTEX,10X,5HAXIAL,10X,7HLATERAL,10X,8HVE
+     1RTICAL/2X,3HNO.,10X,8HSTRENGTH,7X,8HVELOCITY,9X,8HVELOCITY,9X,8HVE
+     2LOCITY//)
+  410 FORMAT (1H ,I4,7X,F10.5,5X,F10.5,3(7X,F10.5))
+      END
+C     ****************************************
+      SUBROUTINE INVERT (A,IA,NROWS)
+C     ****************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      REAL*8 A(NROWS,NROWS),PIVOT,T
+      INTEGER IPIVOT(115),INDXR(115),INDXC(115)
+      N=IA
+      DO 10 J=1,N
+   10 IPIVOT(J)=0
+      DO 100 I=1,N
+      T=0.0d0
+      DO 30 J=1,N
+      IF (IPIVOT(J).EQ.1) GOTO 30
+      DO 20 K=1,N
+      IF (IPIVOT(K).EQ.1) GO TO 20
+      IF (.NOT.((ABS(A(J,K))-ABS(T)).GT.0.0d0))GOTO 20
+      IROW=J
+      ICOL=K
+      T=A(J,K)
+   20 CONTINUE
+   30 CONTINUE
+      IPIVOT(ICOL)=IPIVOT(ICOL)+1
+      IF (IROW.EQ.ICOL) GOTO 50
+      DO 40 L=1,N
+      T=A(IROW,L)
+      A(IROW,L)=A(ICOL,L)
+   40 A(ICOL,L)=T
+   50 INDXR(I)=IROW
+      INDXC(I)=ICOL
+      PIVOT=A(ICOL,ICOL)
+      IF (PIVOT) 60,130,60
+   60 A(ICOL,ICOL)=1.0d0
+      DO 70 L=1,N
+   70 A(ICOL,L)=A(ICOL,L)/PIVOT
+      DO 90 L=1,N
+      IF (L.EQ.ICOL) GOTO 90
+      T=A(L,ICOL)
+      A(L,ICOL)=0.0d0
+      DO 80 M=1,N
+   80 A(L,M)=A(L,M)-A(ICOL,M)*T
+   90 CONTINUE
+  100 CONTINUE
+      DO 120 I=1,N
+      L=N+1-I
+      IF (INDXR(L).EQ.INDXC(L)) GOTO 120
+      IROW=INDXR(L)
+      ICOL=INDXC(L)
+      DO 110 K=1,N
+      T=A(K,IROW)
+      A(K,IROW)=A(K,ICOL)
+  110 A(K,ICOL)=T
+  120 CONTINUE
+      RETURN
+  130 CONTINUE
+      WRITE (108,140)
+c      CALL EXIT
+      stop
+  140 FORMAT (29H ERROR THE MATRIX IS SINGULAR)
+      END
+C     ******************************
+      SUBROUTINE PARTIN
+C     ******************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /PARAM/NBODY,NWING,NTAIL,LBC,THK,NN1,MACH,ALPHA,REFA,
+     *SIDES,DUM(6)
+      COMMON /SEG/ NSEG,NR(20),NDUM(20),NN2,DUM3(60),NDUM1(20),DUM4(140)
+     1,NCSUM
+      COMMON /VELCOM/ NPOINT,NPART,IMAX,JMAX,NMAX,NN3,EX,PRENT,NWTHK,NDU
+     1M2(82)
+      COMMON ARRAY(4800),DUM1(1200),NW(600),NB(600),NT(600),A(60,60),
+     1DUM2(300),GW(600),GB(600),GT(600),DUM5(10100)
+      DIMENSION D(60,60)
+      EQUIVALENCE (D,ARRAY)
+      REAL*8 NW,NB,NT,MACH
+      INTEGER PRENT
+      LOGICAL LBC,THK
+      NDIM=60
+      REWIND 11
+      NPANEL=NBODY+NWING
+      IF (NWING.EQ.0.OR.NBODY.EQ.0) GO TO 50
+      IP=0
+      REWIND 12
+      DO 10 I=1,NBODY
+   10 READ (11) (D(I,J),J=1,NBODY)
+      CALL INVERT (D,NBODY,NDIM)
+      WRITE (12) D
+      DO 20 I=1,NBODY
+   20 READ (11) (D(I,J),J=1,NWING)
+      DO 30 I=1,NWING
+   30 READ (11) (D(I,J),J=1,NBODY)
+      DO 40 I=1,NWING
+   40 READ (11) (D(I,J),J=1,NWING)
+C      WRITE (108,2)
+C      WRITE (108,1) D
+C      WRITE (108,3)
+      CALL INVERT (D,NWING,NDIM)
+C      WRITE (108,3)
+C      WRITE (108,1) D
+      WRITE (12) D
+      REWIND 11
+      REWIND 12
+      GOTO 100
+   50 CONTINUE
+      DO 60 I=1,NPANEL
+   60 READ (11) (A(I,J),J=1,NPANEL)
+      REWIND 11
+      CALL INVERT (A,NPANEL,NDIM)
+      IF (NWING.EQ.0) GO TO 80
+      DO 70 I=1,NWING
+      GW(I)=0.d0
+      DO 70 J=1,NWING
+      GW(I)=GW(I)+A(I,J)*NW(J)
+   70 CONTINUE
+      GO TO 100
+   80 DO 90 I=1,NBODY
+      GB(I)=0.d0
+      DO 90 J=1,NBODY
+      GB(I)=GB(I)+A(I,J)*NB(J)
+   90 CONTINUE
+  100 REWIND 11
+      RETURN
+    1 FORMAT (1H ,10F10.5)
+    2 FORMAT (9H MATR A22)
+    3 FORMAT (9H END MATR)
+      END
+C     ********************************
+      SUBROUTINE DIAGIN
+C     ********************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /PARAM/NBODY,NWING,NTAIL,LBC,THK,NN1,MACH,ALPHA,REFA,
+     *SIDES,DUM(6)
+      COMMON /SEG/ NSEG,NR(20),NDUM(20),NN2,DUM3(60),NDUM1(20),DUM4(140)
+     1,NCSUM
+      COMMON /VELCOM/ NPOINT,NPART,IMAX,JMAX,NMAX,NN3,EM,PRENT,NWTHK,
+     1NWBLOK,NWROW(20),NBBLOK,NBROW(60)
+      COMMON ARRAY(6000),BLOCK(17600)
+      DIMENSION D(60,60)
+      EQUIVALENCE (D,ARRAY)
+      INTEGER PRENT
+      REAL*8 MACH
+      LOGICAL LBC,THK
+      REWIND 11
+      REWIND 12
+      NDIM=60
+      IF (NBODY.EQ.0) GOTO 50
+      DO 40 NB=1,NBBLOK
+      NROW=NBROW(NB)
+      NCOL=NROW
+      IF (NBODY.GT.NMAX) GOTO 20
+      DO 10 I=1,NBODY
+   10 READ (11) (D(I,J),J=1,NBODY)
+      GOTO 30
+   20 READ (9) D
+   30 CALL INVERT (D,NCOL,NDIM)
+      WRITE (12) D
+   40 CONTINUE
+   50 IF (NWING.EQ.0) GOTO 140
+      DO 130 NW=1,NWBLOK
+      NROW=NWROW(NW)
+      NCOL=NROW
+      IF (NWING.GT.NMAX) GO TO 110
+      IF (NBODY.EQ.0) GOTO 90
+      DO 60 I=1,NBODY
+   60 READ (11) (VADUM,J=1,NBODY)
+      DO 70 I=1,NBODY
+   70 READ (11) (VADUM,J=1,NWING)
+      DO 80 I=1,NWING
+   80 READ (11) (VADUM,J=1,NBODY)
+   90 CONTINUE
+      DO 100 I=1,NWING
+  100 READ (11) (D(I,J),J=1,NWING)
+      GOTO 120
+  110 READ (9) D
+  120 CALL INVERT (D,NCOL,NDIM)
+      WRITE (12) D
+  130 CONTINUE
+  140 REWIND 12
+      REWIND 11
+      REWIND 9
+      RETURN
+      END
+C     *********************************
+      SUBROUTINE ITRATE
+C     *********************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /PARAM/NBODY,NWING,NTAIL,LBC,THK,NN1,MACH,ALPHA,REFA,
+     *SIDES,DUM(6)
+      COMMON /SEG/ NSEG,NR(20),NDUM(20),NN2,DUM3(60),NDUM1(20),DUM4(140)
+     1,NCSUM
+      COMMON /VELCOM/ NPOINT,NPART,IMAX,JMAX,NMAX,NN3,EM,PRENT,NWTHK,
+     1NWBLOK,NWROW(20),NBBLOK,NBROW(60)
+      COMMON D(60,60),DNB(600),DNW(600),DUM1(1200),NW(600),NB(600),
+     1NT(600),A(600),RW(600),RB(600),DUM2(2100),GW(600),GB(600),GT(600)
+     2,DUM5(10100)
+      COMMON /SOV/ EPSIL,NITER
+      DIMENSION AB(600),AW(600)
+      REAL*8 NB,NW,NT,MACH
+      INTEGER PRENT
+      LOGICAL LBC,THK
+      IMAX=NITER
+      IT=0
+      REWIND 11
+      IF (NBODY.EQ.0) GOTO 20
+      DO 10 N=1,NBODY
+      AB(N)=0.D0
+   10 RB(N)=NB(N)
+   20 IF (NWING.EQ.0) GOTO 40
+      DO 30 N=1,NWING
+      AW(N)=0.D0
+   30 RW(N)=NW(N)
+   40 IT=IT+1
+      IB=0
+      IW=0
+      IF (NBODY.EQ.0) GOTO 70
+      IF (IT.EQ.1) GOTO 1
+      DO II=1,NBODY
+        AB(II)=GB(II)
+      enddo
+    1 CONTINUE
+      JS=0
+      NBLOK=NBBLOK
+      DO 60 NN=1,NBLOK
+      NROW=NBROW(NN)
+      NCOL=NROW
+      READ (12) D
+      DO 50 I=1,NROW
+      IB=IB+1
+      GB(IB)=0.d0
+      DO 50 J=1,NCOL
+      JJ=J+JS
+   50 GB(IB)=GB(IB)+D(I,J)*RB(JJ)
+      JS=JS+NROW
+   60 CONTINUE
+   70 IF (NWING.EQ.0) GOTO 100
+      IF (IT.EQ.1) GOTO 2
+      DO II=1,NWING
+        AW(II)=GW(II)
+      ENDDO
+    2 CONTINUE
+      JS=0
+      NBLOK=NWBLOK
+      DO 90 NN=1,NBLOK
+      NROW=NWROW(NN)
+      NCOL=NROW
+      READ (12) D
+      DO 80 I=1,NROW
+      IW=IW+1
+      GW(IW)=0.d0
+      DO 80 J=1,NCOL
+      JJ=J+JS
+   80 GW(IW)=GW(IW)+D(I,J)*RW(JJ)
+      JS=JS+NROW
+   90 CONTINUE
+C      WRITE (108,260) D
+  100 CONTINUE
+      REWIND 12
+      IF (IABS(PRENT).LT.3) GOTO 111
+      WRITE(108,250)IT
+      IF (NBODY.GT.0) WRITE(108,260)(GB(N),N=1,NBODY)
+      IF (NWING.GT.0) WRITE (108,260) (GW(N),N=1,NWING)
+  111 IF (NBODY.EQ.0) GOTO 3
+C===========================================
+      EPSMAX=0.
+      DO 1003 II=1,NBODY
+      EPSII=ABS(AB(II)-GB(II))
+      IF (EPSII.GT.EPSMAX) EPSMAX=EPSII
+ 1003 CONTINUE
+  112 FORMAT (1H ,22HBODY, NUM. OF ITER. = ,I3,10H   EPSMAX=,E10.3)
+      PRINT 112,IT,EPSMAX
+      IF (EPSMAX.GT.EPSIL) GOTO 110
+C===========================================
+    3 CONTINUE
+      IF (NWING.EQ.0) GOTO 5
+      EPSMAX=0.0
+      DO 4 II=1,NWING
+      EPSII=ABS(AW(II)-GW(II))
+      IF (EPSII.GT.EPSMAX) EPSMAX=EPSII
+    4 CONTINUE
+  113 FORMAT (1H ,22HWING, NUM. OF ITER. = ,I3,10H   EPSMAX=,E10.3)
+      PRINT 113,IT,EPSMAX
+      IF (EPSMAX.GT.EPSIL) GOTO 110
+    5 CONTINUE
+      WRITE (108,270) IT
+      IF (NBODY.GT.0) WRITE (108,260) (GB(N),N=1,NBODY)
+      IF (NWING.GT.0) WRITE (108,260) (GW(N),N=1,NWING)
+      WRITE (108,280)
+      IF (NBODY.EQ.0) GOTO 12
+      DO 11 II=1,NBODY
+      AB(II)=ABS(AB(II)-GB(II))*100.d0
+   11 CONTINUE
+      WRITE (108,260) (AB(N),N=1,NBODY)
+   12 IF (NWING.EQ.0) GOTO 14
+      DO 13 II=1,NWING
+      AW(II)=ABS(AW(II)-GW(II))*100.d0
+   13 CONTINUE
+      WRITE (108,260) (AW(N),N=1,NWING)
+   14 RETURN
+  110 IF (IT.EQ.IMAX) GOTO 5
+      IF (NBODY.EQ.0) GOTO 170
+      DO 130 I=1,NBODY
+      DNB(I)=0.d0
+      READ (11) (A(J),J=1,NBODY)
+      IF (NBODY.LE.NMAX) GOTO 130
+      DO 120 J=1,NBODY
+  120 DNB (I)=DNB(I)+A(J)*GB(J)
+  130 RB(I)=NB(I)-DNB(I)
+      IF (NWING.EQ.0) GO TO 160
+      DO 150 I=1,NBODY
+      READ (11) (A(J),J=1,NWING)
+      DO 140 J=1,NWING
+  140 DNB(I)=DNB(I)+A(J)*GW(J)
+  150 RB(I)=NB(I)-DNB(I)
+  160 CONTINUE
+  170 IF (NWING.EQ.0) GOTO 220
+      DO 190 I=1,NWING
+      DNW(I)=0.d0
+      IF (NBODY.EQ.0) GOTO 190
+      READ (11) (A(J),J=1,NBODY)
+      DO 180 J=1,NBODY
+  180 DNW(I)=DNW(I)+A(J)*GB(J)
+  190 RW(I)=NW(I)-DNW(I)
+      IF (NWING.LE.NMAX) GO TO 220
+      DO 210 I=1,NWING
+      READ (11) (A(J),J=1,NWING)
+      DO 200 J=1,NWING
+  200 DNW(I)=DNW(I)+A(J)*GW(J)
+  210 RW(I)=NW(I)-DNW(I)
+  220 CONTINUE
+      REWIND 11
+      IF (IT.LT.IMAX) GOTO 40
+  230 RETURN
+  250 FORMAT (1H ,3I3)
+  260 FORMAT (1H ,10F10.5)
+  270 FORMAT (1H ,26HNUMBER LAST OF ITERATION =,I3,/)
+  280 FORMAT (1H ,21HRELATIVE OF MISTAKE %,/)
+      END
+C     ******************************************************************
+      SUBROUTINE PRESS (NP,XMACH,ARA,U,V,W,CPP,CPSTAG,CPCRIT,CPVAC,
+     1COMPT,LBC,NPASS)
+C     ******************************************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /ITER/ ITERM,MAXWTR,ITEMAX,GROUND,BET,DIVER,BELOYC,SHEK
+      COMMON/MAXII/ POPMAX(600),H
+      COMMON /TOLA/ ITT(600),NGRI
+      DIMENSION U(1),V(1),W(1),CPP(1),UK(600),VK(600),WK(600),XMAX(20)
+     *,NAME2(2),NAME3(2)
+      INTEGER COMPT
+      LOGICAL ITEMAX,GROUND,LBC,BET,DIVER,BELOYC,SHEK
+      GAM=1.4d0
+      NT=0
+      EPS1=1.0d-14
+      XM2=XMACH*XMACH
+      BT2=XM2-1.d0
+      CPRIT=0.d0
+      CPSTAG=1.d0
+      CPVAC=0.d0
+      COSARA=COS(ARA)
+      SINARA=SIN(ARA)
+      IF (ABS(XM2).LT.EPS1) GOTO 10
+      CON=1.42857d0/XM2
+      CON1=.2d0*XM2
+   10 DO 30 J=1,NP
+      UWPM=U(J)*COSARA+W(J)*SINARA
+      UWIND=1.d0+UWPM
+      VWIND=V(J)
+      WWIND=W(J)*COSARA-U(J)*SINARA
+      VW2=VWIND*VWIND+WWIND*WWIND
+      Q2=UWIND*UWIND+VW2
+      IF (.NOT.SHEK) GO TO 1
+      UK(J)=UWIND
+      VK(J)=VWIND
+      WK(J)=WWIND
+   1  IF (ABS(XMACH).LT.EPS1) GOTO 20
+      ARG=1.d0+CON1*(1.d0-Q2)
+      IF (ARG.LT.0.0d0) ARG=0.d0
+      IF (COMPT.EQ.2.AND.LBC) GO TO 11
+      CPP(J)=CON*(ARG**3.5d0-1.d0)
+      GOTO 31
+  11  CPP(J)=-2.d0*U(J)
+      GO TO 31
+  20  IF (COMPT.EQ.2.AND.LBC) GO TO 12
+      CPP(J)=1.d0-Q2
+      GO TO 31
+  12  CPP(J)=-2.d0*U(J)
+  31  NT=NT+1
+      XMA=1.d0+.2d0*XM2*(1.d0-Q2)
+      XMAX(NT)=SQRT(MAX(Q2*XM2/XMA,0.d0))
+      IF(.NOT.ITEMAX) GO TO 29
+      POPMAX(J)=XMAX(NT)
+  29  IF(NT-20)30,60,60
+  60  WRITE(108,100) (XMAX(IPR),IPR=1,20)
+ 100  FORMAT(20(1X,F5.3))
+      NT=NT-20
+   30 CONTINUE
+      IF(NT.EQ.0) GO TO 32
+      WRITE(108,100) (XMAX(IPR),IPR=1,NT)
+   32 IF(ABS(XMACH).LT.EPS1) GO TO 40
+      CPSTAG=CON*((1.d0+CON1)**3.5d0-1.d0)
+      CPCRIT=CON*((5.d0/6.d0+XM2/6.d0)**3.5d0-1.d0)
+      CPVAC=-CON
+   40 CONTINUE
+      IF (.NOT.SHEK) GO TO 70
+      NGRI=NGRI+1
+      IF (NPASS.NE.1) GO TO 68
+      NAME2(1)=4HUPPE
+      NAME2(2)=4HR   
+      WRITE (5) XMACH,ARA,NAME2,NP
+      GO TO 69
+  68  NAME3(1)=4HLOWE
+      NAME3(2)=4HR   
+      WRITE (5) XMACH,ARA,NAME3,NP
+  69  WRITE (5) (UK(J),VK(J),WK(J),J=1,NP)
+C     WRITE (108,80) NP
+C 80  FORMAT(2X,10HUK(J),J=1,I3)
+C     WRITE (108,81) (UK(J),J=1,NP)
+C 81  FORMAT(1H ,10F10.5)
+C     WRITE (108,82) NP
+C 82  FORMAT(2X,10HVK(J),J=1,I3)
+C     WRITE (108,81) (VK(J),J=1,NP)
+C     WRITE (108,83) NP
+C 83  FORMAT(2X,10HWK(J),J=1,I3)
+C     WRITE (108,81) (WK(J),J=1,NP)
+C     IF (NPASS.EQ.1) WRITE(108,84)NAME2 ; GO TO 70
+C 84  FORMAT (1X,2A4)
+C     WRITE (108,84) NAME3
+  70  RETURN
+      END
+C     *************************************************
+      SUBROUTINE FORMOM (NPAN,NPASS,ALFA,COMPT)
+C     *************************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /PARAM/ NBODY,NWING,NTAIL,LBC,THK,NN1,MACH,ALPHA,REFA,
+     1SIDES,REFB,REFC,REFD,REFL,REFX,REFZ
+      COMMON /HEAD/ TITLE1(8),TITLE2(8)
+      COMMON /SEG/ NSEG,NROW(20),NCOL(20),NN2,COSS(20),SINS(20),BTE(
+     120),NWT(20),SPNW(20),XLEW(20),BLE(20),ZLEW(20),DUM(60)
+     2,NCSUM
+      COMMON ARRAY(6000),DCN(600),DCM(600),DCT(600),TI(600),SIND(600
+     1),COSD(600),CP(600),DUD(300),SINT(600),COST(600),GW(600),G
+     2B(600),DZTDX(600),DUM5(10100)
+      COMMON /NEWCOM/ KDUM(51),LOCPT(20),NN3,XCPT(20),DUM6(20)
+      COMMON /VELCOM/ NPOINT,NDUM1(4),NN4,EMM,PRENT,NDUN(83)
+      COMMON /FORM/ CNW,CTW,CMW,CNB,CTB,CMB,CNS(20),CTS(20),CMS(20)
+      COMMON /ITER/ ITERM,MAXWTR,ITEMAX,GROUND,BET,DIVER,BELOYC,SHEK
+      DIMENSION XPT(600),YPT(600),ZPT(600),THET(600),DELTA(600),
+     1SGN(600),AREA(600),CHORD(600),CHD(20),XLE(600),ZLE(600),X
+     2C(30,20),ZP1(20),XP1(30),CP1(20,30,2),ZCE4(20),XAF1(30),III(600)
+     3,NAME(2)
+      EQUIVALENCE (ARRAY,XPT),(ARRAY(601),YPT),(ARRAY(1201),ZPT),(ARR
+     1AY(1801),THET),(ARRAY(2401),DELTA),(ARRAY(3001),XC,SGN),(ARRAY(
+     24801),AREA),(ARRAY(3601),CHORD),(ARRAY(5401),XLE),(CHD,DUD)
+     3,(DUM5(8800),ZP1),(DUM5(8821),XP1),(DUM5(8851),CP1),
+     4(DUM5(10051),ZCE4),(DUM5(10071),XAF1)
+      COMMON /BLRR/ XXB(60),YYB(30,30),ZZB(30,30),FXPL(8),NXPL,NNNX,NNYZ
+      INTEGER COMPT,TEST,PRENT
+      REAL*8 MACH
+      LOGICAL LBC,THK,ITEMAX,GROUND,BET,DIVER,BELOYC,SHEK
+      EPS=1.0d-6
+      EPS1=1.0d-14
+      NP=NPAN
+      DO 99 I=1,600
+      III(I)=TI(I)+.5d0
+   99 CONTINUE
+      IF (COMPT.EQ.1) XON=XC(1,1)
+      IF (COMPT.EQ.2.AND.NBODY.GT.0) GOTO 10
+      CNB=0.d0
+      CTB=0.d0
+      CMB=0.d0
+   10 CONTINUE
+      IF (NBODY.EQ.0.OR.NWING.EQ.0.OR.NPASS.EQ.2) GO TO 20
+      REWIND 9
+      IF (COMPT.EQ.2) READ (9) ARRAY,CHORD,DZTDX
+   20 CONTINUE
+      SIAL=SIN(ALFA)
+      COAL=COS(ALFA)
+      IF(PRENT.EQ.0.AND.NBODY.EQ.0.AND.NPASS.EQ.1) GO TO 18
+      IF(PRENT.EQ.0.AND.NBODY.EQ.0.AND.NPASS.EQ.2) GO TO 19
+      IF(PRENT.EQ.0.AND.COMPT.GT.1) GO TO 19
+  18  WRITE (108,300)
+      WRITE (108,320) TITLE1
+      WRITE (108,321) TITLE2
+  19  IF(PRENT.EQ.0) GO TO 21
+      WRITE (108,310)
+      IF (COMPT.EQ.1) WRITE (108,440)
+  21  IF (.NOT.LBC) GO TO 30
+      IF (PRENT.EQ.0) GO TO 40
+      IF (COMPT.EQ.2.AND.NPASS.EQ.1) WRITE (108,470)
+      IF (COMPT.EQ.2.AND.NPASS.EQ.2) WRITE(108,480)
+      GOTO 40
+   30 IF (PRENT.EQ.0) GO TO 40
+      IF (COMPT.EQ.2) WRITE (108,450)
+   40 CONTINUE
+      WRITE (108,330) MACH,ALPHA
+      IF (PRENT.EQ.0) GO TO 41
+      WRITE (108,340)
+  41  IF (LBC.AND.COMPT.GT.1) GOTO 60
+      DO 50 I=1,NPAN
+      SGN(I)=1.0d0
+      SIND(I)=SIN(DELTA(I))
+      COSD(I)=COS(DELTA(I))
+      SINT(I)=SIN(THET(I))
+   50 COST(I)=COS(THET(I))
+      GO TO 80
+   60 CONTINUE
+      I=0
+      J=0
+      IF (DIVER.AND.COMPT.EQ.2.AND.NPASS.EQ.1) KZ1=0
+      DO 70 N=1,NSEG
+      NC=NCOL(N)
+      IF (DIVER.AND.COMPT.EQ.2.AND.NPASS.EQ.1) KZ1=KZ1+NC
+      NR=NROW(N)
+      NR1=NR+1
+      DO 70 M=1,NC
+      DO 70 L=1,NR1
+      J=J+1
+      IF (DIVER.AND.COMPT.EQ.2.AND.NPASS.EQ.1) KX1=NR
+      IF (L.EQ.NR1) GOTO 70
+      I=I+1
+      SGN(I)=1.0d0
+      IF (NPASS.EQ.2) SGN(I)=-1.0d0
+      DELC=(DELTA(J)+DELTA(J+1))*0.5d0
+      DELZ=(DZTDX(J)+DZTDX(J+1))*0.5d0
+      IF (NPASS.EQ.1) TAND=DELC+DELZ
+      IF (NPASS.EQ.2) TAND=DELC-DELZ
+      SIND(I)=TAND/SQRT(1.d0+TAND*TAND)
+      COSD(I)=SQRT(1.d0-SIND(I)*SIND(I))
+      SINT(I)=SINS(N)
+      COST(I)=COSS(N)
+      XS=XCPT(N)
+      PT=XS
+      IF (LOCPT(N).NE.0) PT=XS*DFLOAT(NR-L)/DFLOAT(NR-1)
+      RL=.5d0+PT
+      RT=.5d0-PT
+      IF (LOCPT(N).NE.0) CP(I)=CP(J)*RL+CP(J+1)*RT
+      IF (NPASS.EQ.2) GOTO 70
+      XPT(I)=(XLE(J)+XLE(J+1))*0.5d0
+      YPT(I)=YPT(J)
+      ZPT(I)=ZPT(J)
+   70 CONTINUE
+      IF (COMPT.EQ.2) NP=I
+   80 CONTINUE
+      IF (NPASS.EQ.2.OR.COMPT.EQ.1) GO TO 110
+      I=0
+      J=0
+      DO 90 N=1,NSEG
+      NC=NCOL(N)
+      NR=NROW(N)
+      DO 90 M=1,NC
+      J=J+1
+      CHD(J)=0.d0
+      KS=2
+      IF (LBC) KS=1
+      DO 90 K=1,KS
+      DO 90 L=1,NR
+      I=I+1
+      IF (K.EQ.1) CHD(J)=CHD(J)+CHORD(I)
+      IF (K.EQ.2) SGN(I)=-1.0d0
+   90 CONTINUE
+      I=0
+      J=0
+      DO 100 N=1,NSEG
+      NC=NCOL(N)
+      NR=NROW(N)
+      DO 100 M=1,NC
+      J=J+1
+      KS=2
+      IF (LBC) KS=1
+      DO 100 K=1,KS
+      DO 100 L=1,NR
+      I=I+1
+      ZLE(I)=ZLEW(J)
+      XLE(I)=XLEW(J)
+      CHORD(I)=CHD(J)
+  100 CONTINUE
+  110 CONTINUE
+      IF (NPASS.EQ.2) GO TO 120
+      CN=0.d0
+      CT=0.d0
+      CM=0.d0
+      GO TO 130
+  120 CN=CNW
+      CT=CTW
+      CM=CMW
+  130 IP=0
+      DO 160 I=1,NP
+      IP=IP+1
+      XP=XPT(I)
+      YP=YPT(I)
+      ZP=ZPT(I)
+      F1=COSD(I)*COST(I)
+      F2=SIND(I)
+      FAK=AREA(I)*SGN(I)
+      IF (LBC.AND.COMPT.GT.1.AND.ABS(COSD(I)).GT.EPS1) FAK=FAK/COSD(I)
+      DCN(I)=-CP(I)*F1*FAK
+      DCT(I)=CP(I)*F2*FAK
+      DCM(I)=DCN(I)*(REFX-XP)-DCT(I)*(REFZ-ZP)
+      XQ=XP
+      YQ=YP
+      ZQ=ZP
+      IF (COMPT.EQ.2) GO TO 140
+      XQ=(XP-XON)/REFL
+      YQ=YP/REFD
+      ZQ=ZP/REFD
+      GO TO 150
+  140 IF (ABS(CHORD(I)).GT.EPS1) XQ=(XP-XLE(I))/CHORD(I)
+      IF (ABS(REFB).GT.EPS1) YQ=YP/REFB
+      IF (ABS(CHORD(I)).GT.EPS1) ZQ=(ZP-ZLE(I))/CHORD(I)
+  150 CONTINUE
+      IF (PRENT.EQ.0) GO TO 141
+      WRITE (108,350) IP,XP,YP,ZP,XQ,YQ,ZQ,CP(I),DCN(I),DCT(I),DCM(I),IP
+  141 IF (ABS(YP).GT.EPS) GOTO 151
+      DCN(I)=DCN(I)/2.d0
+      DCT(I)=DCT(I)/2.d0
+      DCM(I)=DCM(I)/2.d0
+  151 CN=CN+DCN(I)
+      CT=CT+DCT(I)
+      CM=CM+DCM(I)
+  160 CONTINUE
+C===========================================
+      CALL OUTDAT(26)
+  161 FORMAT (8F10.5)
+  163 FORMAT ('   NP=',I4,'   PRESSURE DISTR. IN THE C.P.')
+  164 FORMAT ('SECTION ',I2,'-',I2)
+      WRITE (026,163) NP
+      JYZ1=1
+      DO 167 JJX=1,NNNX-1
+      JJX1=JJX+1
+      WRITE (026,164) JJX,JJX1
+      JYZ2=JYZ1+(NNYZ-1)-1
+      WRITE (026,161) (CP(JYZ),JYZ=JYZ1,JYZ2)
+  167 JYZ1=JYZ2+1
+      close (unit = 26)
+      CALL OUTDAT(28)
+      WRITE (028,163) NP
+      JYZ1=1
+      DO 168 JJX=1,NNNX-1
+      JJX1=JJX+1
+      WRITE (028,164) JJX,JJX1
+      JYZ2=JYZ1+(NNYZ-1)-1
+      WRITE (028,161) (CP(JYZ),JYZ=JYZ1,JYZ2)
+  168 JYZ1=JYZ2+1
+      close (unit = 28)
+C===========================================
+      IF (COMPT.GT.1) GO TO 170
+      CNB=CN
+      CTB=CT
+      CMB=CM
+      GO TO 180
+  170 CONTINUE
+      CNW=CN
+      CTW=CT
+      CMW=CM
+      IF (LBC.AND.NPASS.EQ.1) GO TO 200
+  180 CONTINUE
+      WRITE (108,300)
+      WRITE (108,360)
+      IF (COMPT.EQ.1) WRITE (108,440)
+      IF (COMPT.EQ.2) WRITE (108,450)
+      IT=0
+  190 CN=2.d0*CN/REFA
+      CT=2.d0*CT/REFA
+      CM=2.d0*CM/(REFA*REFC)
+      CL=CN*COAL-CT*SIAL
+      CD=CN*SIAL+CT*COAL
+      DXN=0.d0
+      IF (ABS(CL).GT.EPS1) DXN=CM/CL
+      IF (COMPT.EQ.1) WRITE (108,380) REFA,REFD,REFL
+      IF (COMPT.EQ.2) WRITE (108,370) REFA,REFB,REFC
+      WRITE (108,390) REFX,REFZ
+      WRITE (108,400) CN,CT,CM,CL,CD,DXN
+  200 CONTINUE
+      IF (COMPT.EQ.1) GO TO 290
+      IF (LBC.AND.NPASS.EQ.1) GO TO 210
+      IF (NBODY.EQ.0.OR.IT.GT.0) GOTO 210
+      IT=IT+1
+      CN=CNB+CNW
+      CT=CTB+CTW
+      CM=CMB+CMW
+      WRITE (108,300)
+      WRITE (108,360)
+      WRITE (108,460)
+      GOTO 190
+  210 IF (PRENT.EQ.0) GOTO 290
+      IF (LBC.AND.NPASS.EQ.1) GOTO 220
+      WRITE (108,300)
+      WRITE (108,420)
+      WRITE (108,450)
+  220 CONTINUE
+      J=0
+      K=0
+      I2=0
+      IZ=0
+      DO 280 N=1,NSEG
+      NR=NROW(N)
+      NR2=NR*2
+      NC=NCOL(N)
+      DO 280 M=1,NC
+      J=J+1
+      K=K+1
+      I1=I2+1
+      IF (LBC) I2=I2+NR
+      IF (.NOT.LBC) I2=I2+NR2
+      IZ=IZ+1
+      IF (IZ.LT.4) GOTO 230
+      IF (LBC.AND.NPASS.EQ.1) GOTO 230
+      IZ=1
+      WRITE (108,300)
+      WRITE (108,420)
+      WRITE (108,450)
+  230 CONTINUE
+      DELY=SPNW(J)
+      XL=XLEW(J)
+      CH=CHD(J)
+      IF (LBC.AND.NPASS.EQ.1) GOTO 240
+      WRITE (108,410)
+      WRITE (108,430) DELY,REFC,XL,CH
+  240 CONTINUE
+      IF (LBC.AND.NPASS.EQ.2) GO TO 250
+      CN=0.d0
+      CT=0.d0
+      CM=0.d0
+      GO TO 260
+  250 CN=CNS(K)
+      CT=CTS(K)
+      CM=CMS(K)
+  260 CONTINUE
+      DO 270 I=I1,I2
+      CN=CN+DCN(I)
+      CT=CT+DCT(I)
+      CM=CM+DCM(I)
+  270 CONTINUE
+      CNS(K)=CN
+      CTS(K)=CT
+      CMS(K)=CM
+      IF (LBC.AND.NPASS.EQ.1) GO TO 280
+      H1=1.d0/(DELY*CHD(J))
+      H2=H1/REFC
+      CN=CN*H1
+      CT=CT*H1
+      CM=CM*H2
+      CL=CN*COAL-CT*SIAL
+      CD=CN*SIAL+CT*COAL
+      DXN=0.d0
+      IF (ABS(CL).GT.EPS1) DXN=CM/CL
+      WRITE (108,400) CN,CT,CM,CL,CD,DXN
+  280 CONTINUE
+  290 CONTINUE
+      IF (.NOT.(SHEK.AND.NPASS.NE.1)) GO TO 292
+      J=0
+      I2=0
+      DO 291 N=1,NSEG
+      NR=NROW(N)
+      NC=NCOL(N)
+      DO 291 M=1,NC
+      J=J+1
+      I2=I2+1
+      ZP1(J)=YPT(I2)
+      I2=I2-1+NR
+ 291  CONTINUE
+      JM=J
+      WRITE (5) JM,NP
+      WRITE (5) REFB
+      WRITE (5) (XLEW(J1),ZP1(J1),ZLEW(J1),CHD(J1),J1=1,JM)
+      WRITE (5) (XPT(I),YPT(I),ZPT(I),I=1,NP)
+C     OUTPUT JM,NP,REFB,XLEW,ZP1,ZLEW,CHD
+C     WRITE (108,293) (XPT(I),I=1,NP)
+C     WRITE (108,293) (YPT(I),I=1,NP)
+C     WRITE (108,293) (ZPT(I),I=1,NP)
+C 293 FORMAT(2X,10F10.5)
+  292 IF(.NOT.DIVER) GO TO 500
+      IF(COMPT.EQ.2.AND.NPASS.EQ.2) GO TO 510
+      J=0
+      I2=0
+      DO 520 N=1,NSEG
+      NR=NROW(N)
+      NC=NCOL(N)
+      DO 520 M=1,NC
+      J=J+1
+      I2=I2+1
+      ZP1(J)=YPT(I2)
+      I2=I2-1+NR
+  520 CONTINUE
+      DO 530 I=1,NR
+  530 XP1(I)=(XPT(I)-XLEW(1))/CHD(1)
+      K=0
+      DO 540 I=1,KZ1
+      DO 540 J=1,KX1
+      K=K+1
+  540 CP1(I,J,2)=CP(K)
+      GO TO 500
+  510 K=0
+      DO 560 I=1,KZ1
+      DO 560 J=1,KX1
+      K=K+1
+  560 CP1(I,J,1)=CP(K)
+      READ(7) JJN,NAME,NWAF,NWAFOR
+      READ(7)ZCE4,XAF1
+      REWIND 7
+      WRITE (7) JJN,NAME,KZ1,KX1,NWAF,NWAFOR
+      WRITE (7) (ZP1(I),I=1,KZ1),(XP1(I),I=1,KX1)
+     *,(((CP1(I,J,K),J=1,KX1),I=1,KZ1),K=1,2)
+      WRITE (7) ZCE4,XAF1
+      REWIND 7
+  500 RETURN
+  300 FORMAT (1H0)
+  310 FORMAT (//,10X,40HINTEGRATION OF THE PRESSURE DISTRIBUTION,/)
+  320 FORMAT (10X,20A8)
+  321 FORMAT (//,10X,20A8)
+  330 FORMAT (//,10X,6HMACH= ,F8.4,/,10X,6HALPHA=,F8.4)
+  340 FORMAT (1X,5HPOINT,9X,1HX,9X,1HY,9X,1HZ,9X,3HX/C,9X,4H2Y/B,9X,3HZ/
+     1C,9X,2HCP,9X,2HCN,9X,2HCT,9X,2HCM,5X,5HPOINT/)
+  350 FORMAT (1X,I6,10F11.5,I6)
+  360 FORMAT (///,10X,17HTOTAL COEFFICENTS,/,10X,18(1H-))
+  370 FORMAT (10X,5HREFA=,F14.4,3X,5HREFB=,F14.4,3X,5HREFC=,F14.4)
+  380 FORMAT (10X,5HREFA=,F14.4,3X,5HREFD=,F14.4,3X,5HREFL=,F14.4)
+  390 FORMAT (/,10X,5HREFX=,F14.4,3X,5HREFZ=,F14.4)
+  400 FORMAT (/,10X,3HCN=,F14.4,/,10X,3HCT=,F14.4,/,10X,3HCM=,F14.4,/,10
+     1X,3HCL=,F14.4,/,10X,3HCD=,F14.4,/,9X,4HXCP=,F14.4)
+  410 FORMAT (//)
+  420 FORMAT (10X,20HSECTION COEFFICIENTS,/,10X,20(1H-))
+  430 FORMAT (10X,5HDELY=,F14.4,3X,5HREFL=,F14.4,3X,4HXLE=,F14.4,
+     *3X,4HCHD=,F14.4)
+  440 FORMAT (10X,11HON THE BODY,//)
+  450 FORMAT (10X,11HON THE WING,//)
+  460 FORMAT (10X,29HON THE COMPLETE CONFIGURATION,//)
+  470 FORMAT (10X,25HON THE WING UPPER SURFACE,//)
+  480 FORMAT (10X,25HON THE WING LOWER SURFACE,//)
+      END
+C     ********************
+      SUBROUTINE WNGVEL
+C     ********************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /PARAM/ NBODY,NWING,NTAIL,LBC,THK,NH,MACH,ALPHA,REFA,
+     *SIDES,DUM(6)
+      COMMON /VELCOM/ NPOINT,NPART,IMAX,JMAX,NMAX,NDDU,EM,PRENT,NWTHK
+     1,NWBLOK,NWROW(20),NBBLOK,NBROW(60)
+      COMMON /SEG/ NSEG,NROW(20),NCOL(20),NNN4,COSS(20),SINS(20),
+     1TT(20),NWT(20),SPNW(20),XLEW(20),BLE(20),ZLEW(20),XS(20),
+     2YS(20),ZS(20),NCSUM
+      COMMON /COMPS1/ XJ,YJ,ZJ,AL,BL,CL,SUB,BPOS,M,NSIDE
+      COMMON  ARRAY(6000),
+     1DUMMY(1440),A(30),CI(30),CO(30),AC(600),UC(
+     2600),VC(600),WC(600),COSBD(600),SINBD(600),TANBD(600),DC(6
+     30),DUMMM(990),UL(30),VL(30),WL(30),AN(30),ZU(30,20),DUMMO(10100)
+      COMMON /TRAN/ SIND,COSD,TAND,SINT,COST,CONTD,SINTI,COSTI,
+     1CON,BCON,DI
+      COMMON /BTHET/ THETI(600)
+      DIMENSION XPT(600),YPT(600),ZPT(600),THET(600),DELTA(600),
+     1XC(30,20),YC(30,20),ZC(30,20),DELTI(600)
+      EQUIVALENCE (ARRAY,XPT),(ARRAY(601),YPT),(ARRAY(1201),ZPT
+     1),(ARRAY(1801),THET), (ARRAY(2401),DELTA), (ARRAY(3001),XC
+     2),(ARRAY(3601),YC),(ARRAY(4201),ZC),(ARRAY(4801),DELTI)
+      LOGICAL  THK,LBC,SUB,BPOS
+      INTEGER PRENT
+      REAL*8 MACH
+      PI=3.14159265d0
+      SUB=MACH.LT.1.0d0
+      SGN=-1.0d0
+      IF (SUB) SGN=1.0d0
+      BETA=SQRT(ABS(MACH*MACH-1.0d0))
+      CON=1.d0/(2.d0*PI)
+      IF (SUB) CON=CON/2.d0
+      BCON=BETA*CON
+      IF (NPART.NE.2) GO TO 10
+      REWIND 9
+      READ (9) (DUMMY(N),N=1,1800),(THET(N),N=1,600),(DELTA(N),N=1,600)
+      REWIND 9
+   10 CONTINUE
+      DO 20 N=1,NWING
+      BD=BETA*TAN(DELTA(N))
+      TANBD(N)=BD
+      ARG=1.d0+SGN*BD*BD
+      IF (ARG.LT.0.0d0) GO TO 320
+      COSBD(N)=1.d0/SQRT(ARG)
+   20 SINBD(N)=BD*COSBD(N)
+      DO 310 I=1,NPOINT
+      IF (NPART.EQ.2) GO TO 30
+      SINTI=SIN(THET(I))
+      COSTI=COS(THET(I))
+      DI=TANBD(I)
+      GO TO 40
+   30 SINTI=SIN(THETI(I))
+      COSTI=COS(THETI(I))
+      DI=BETA*TAN(DELTI(I))
+   40 XI=XPT(I)
+      YI=YPT(I)
+      ZI=ZPT(I)
+      J=0
+      JJ=0
+      J2=0
+      N2=0
+      DO 270  NS=1,NSEG
+      NR=NROW(NS)
+      NC=NCOL(NS)
+      NR1=NR+1
+      NR2=2*NR
+      NC1=NC+1
+      NT=NWT(NS)
+      NI=N2+1
+      IF (NS.GT.1.AND.NT.NE.0) NI=NI+1
+      N2=NI+NC-1
+      DO 270 N=NI,N2
+      J1=1+J2
+      J2=J1+NR2-1
+      JL=J1
+      JT=J1+NR
+      I1=JT-1
+      I2=I1+NR
+      JVOR=JJ
+      DO 260 NSIDE=1,2
+      DO 260  L=1,NR1
+      J=J+1
+      IF (L.EQ.NR1)  GO TO 140
+      JJ=JJ+1
+      SIND=SINBD(JJ)
+      COSD=COSBD(JJ)
+      TAND=TANBD(JJ)
+      THETA=THET(JJ)
+      COST=COS(THETA)
+      SINT=SIN(THETA)
+      COSTD=COST*COSD
+      CONTD=SQRT(SGN*TAND*TAND+COST*COST)
+      COSDTD=1.d0/(COSD*CONTD)
+      CONTDD=1.d0/CONTD
+      DO 262 IP=1,2
+      DO 262 IK=1,2
+      IP1=IP+L-1
+      IK1=IK+N-1
+      ZC(IP1,IK1)=ZPT(JJ)+(YC(IP1,IK1)-YPT(JJ))*SINT/COST-
+     *(XPT(JJ)-XC(IP1,IK1))*TAND/COST
+  262 CONTINUE
+      DO 50 M=1,2
+      M1=L+M-1
+      DXC=XC(M1,N+1)-XC(M1,N)
+      DYC=YC(M1,N+1)-YC(M1,N)
+C     IF (NSIDE.EQ.1) DZC=ZU(M1,N+1)-ZU(M1,N)
+      IF (NSIDE.NE.9) DZC=ZC(M1,N+1)-ZC(M1,N)
+      DYC=BETA*DYC
+      DZC=BETA*DZC
+      DZL=DZC*COSTD-DXC*SIND
+      DYL=DYC*COSD*CONTD+SINT*DZL*CONTDD
+      DXL=(DXC*COSTD+DZC*SIND*SGN)*COSDTD
+      BL=DXL/DYL
+      IF (M.EQ.1) BLE(1)=BL
+      IF (M.EQ.2) BTE=BL
+   50 CONTINUE
+      AL=BLE(1)-BTE
+      A(L)=AL
+      DO 130  K=1,2
+      N1=N+K-1
+      DXC=XC(L+1,N1)-XC(L,N1)
+      DYC=YC(L+1,N1)-YC(L,N1)
+C     IF (NSIDE.EQ.1) DZC=ZU(L+1,N1)-ZU(L,N1)
+      IF (NSIDE.NE.9) DZC=ZC(L+1,N1)-ZC(L,N1)
+      CL=(DXC*COSTD+BETA*DZC*SIND*SGN)*COSDTD
+      IF (K.EQ.1) CI(L)=CL
+      IF (K.EQ.2) CO(L)=CL
+      DO 130 M=1,2
+      M1=L+M-1
+      DX=XI-XC(M1,N1)
+      DY=YI-YC(M1,N1)
+C     IF (NSIDE.EQ.1) DZ=ZI-ZU(M1,N1)
+      IF (NSIDE.NE.9) DZ=ZI-ZC(M1,N1)
+      DY=BETA*DY
+      DZ=BETA*DZ
+      XJ=(DX*COSTD+DZ*SIND*SGN)*COSDTD
+      ZJ=DZ*COSTD-DX*SIND
+      YJ=DY*COSD*CONTD+SINT*ZJ*CONTDD
+      ZJ=ZJ-DY*COSD*SINT
+      IF(M.EQ.1) BL=BLE(1)
+      IF (M.EQ.2) BL=BTE
+      BPOS=.FALSE.
+      IF(BL.GE.0.0d0) BPOS=.TRUE.
+      BL=ABS(BL)
+      IF (K.EQ.2) GO TO 90
+      IF (M.EQ.2) GO TO 60
+      CALL VORPAN (UCIR,VCIR,WCIR,ULIR,VLIR,WLIR,X,X,X,VEIR,WEIR
+     1,VAIR,WAIR)
+      GO TO 70
+   60 CALL VORPAN (RCIR,SCIR,TCIR,X,X,X,RLIR,SLIR,TLIR,SEIR,TEIR
+     2,SAIR,TAIR)
+   70 DY=-YI-YC(M1,N1)
+      DY=BETA*DY
+      ZJ=DZ*COSTD-DX*SIND
+      YJ=DY*COSD*CONTD+SINT*ZJ*CONTDD
+      ZJ=ZJ-DY*COSD*SINT
+      IF (M.EQ.2) GO TO 80
+      CALL VORPAN (UCIL,VCIL,WCIL,ULIL,VLIL,WLIL,X,X,X,VEIL,WEIL
+     1,VAIL,WAIL)
+      GO TO 130
+   80 CALL VORPAN (RCIL,SCIL,TCIL,X,X,X,RLIL,SLIL,TLIL,SEIL,TEIL
+     1,SAIL,TAIL)
+      GO TO 130
+   90 IF (M.EQ.2) GO TO 100
+      CALL VORPAN (UCOR,VCOR,WCOR,ULOR,VLOR,WLOR,X,X,X,VEOR,WEOR
+     1,VAOR,WAOR)
+      GO TO 110
+  100 CALL VORPAN (RCOR,SCOR,TCOR,X,X,X,RLOR,SLOR,TLOR,SEOR,TEOR
+     1,SAOR,TAOR)
+  110 DY=-YI-YC(M1,N1)
+      DY=BETA*DY
+      ZJ=DZ*COSTD-DX*SIND
+      YJ=DY*COSD*CONTD+SINT*ZJ*CONTDD
+      ZJ=ZJ-DY*COSD*SINT
+      IF (M.EQ.2) GO TO 120
+      CALL VORPAN (UCOL,VCOL,WCOL,ULOL,VLOL,WLOL,X,X,X,VEOL,WEOL
+     1,VAOL,WAOL)
+      GO TO 130
+  120 CALL VORPAN (RCOL,SCOL,TCOL,X,X,X,RLOL,SLOL,TLOL,SEOL,TEOL
+     1,SAOL,TAOL)
+  130 CONTINUE
+      GO TO 170
+  140 SINT=SINS(NS)
+      COST=COSS(NS)
+      CONTD=COSD
+      COSDTD=1.d0/(COSD*CONTD)
+      CONTDD=1.d0/CONTD
+      TAND=0.d0
+      SIND=0.d0
+      COSD=1.0d0
+      BCOS=BETA*COST
+      BSIN=BETA*SINT
+      DXC=XC(NR1,N+1)-XC(NR1,N)
+      DYC=YC(NR1,N+1)-YC(NR1,N)
+      DZC=ZC(NR1,N+1)-ZC(NR1,N)
+      DYL=DYL*COST+DZC*SINT
+      BL=DXC/(BETA*DYL)
+      AL=0.d0
+      CL=1.0d0
+      M=1
+      DO 160 K=1,2
+      N1=N+K-1
+      XJ=XI-XC(NR1,N1)
+      DY=YI-YC(NR1,N1)
+      DZ=ZI-ZC(NR1,N1)
+      YJ=DY*BCOS+DZ*BSIN
+      ZJ=DZ*BCOS-DY*BSIN
+      IF (K.EQ.2) GO TO 150
+      CALL VORPAN (X,X,X,X,X,X,X,X,X,VEIR,WEIR,VAIR,WAIR)
+      DY=-YI-YC(NR1,N1)
+      YJ=DY*BCOS+DZ*BSIN
+      ZJ=DZ*BCOS-DY*BSIN
+      CALL VORPAN (X,X,X,X,X,X,X,X,X,VEIL,WEIL,VAIL,WAIL)
+      GO TO 160
+  150 CALL VORPAN (X,X,X,X,X,X,X,X,X,VEOR,WEOR,VAOR,WAOR)
+      DY=-YI-YC(NR1,N1)
+      YJ=DY*BCOS+DZ*BSIN
+      ZJ=DZ*BCOS-DY*BSIN
+      CALL VORPAN (X,X,X,X,X,X,X,X,X,VEOL,WEOL,VAOL,WAOL)
+      SEIR=0.d0
+      SEIL=0.d0
+      SEOL=0.d0
+      SEOR=0.d0
+      SAIR=0.d0
+      SAIL=0.d0
+      SAOL=0.d0
+      SAOR=0.d0
+      TAIR=0.d0
+      TAIL=0.d0
+      TAOL=0.d0
+      TAOR=0.d0
+      TEIR=0.d0
+      TEIL=0.d0
+      TEOR=0.d0
+      TEOL=0.d0
+  160 CONTINUE
+  170 CONTINUE
+      UAR=0.d0
+      VAR=VAIR-VAOR-SAIR+SAOR
+      WAR=WAIR-WAOR-TAIR+TAOR
+      UAL=0.d0
+      VAL=VAIL-VAOL-SAIL+SAOL
+      WAL=WAIL-WAOL-TAIL+TAOL
+      UIR=0.d0
+      VIR=VEIR-SEIR
+      WIR=WEIR-TEIR
+      UIL=0.d0
+      VIL=VEIL-SEIL
+      WIL=WEIL-TEIL
+      UOR=0.d0
+      VOR=VEOR-SEOR
+      WOR=WEOR-TEOR
+      UOL=0.d0
+      VOL=VEOL-SEOL
+      WOL=WEOL-TEOL
+      IF (L.EQ.NR1) GO TO 180
+      ULR=ULIR-ULOR-RLIR+RLOR
+      ULL=ULIL-ULOL-RLIL+RLOL
+      VLR=VLIR-VLOR-SLIR+SLOR
+      VLL=VLIL-VLOL-SLIL+SLOL
+      WLR=WLIR-WLOR-TLIR+TLOR
+      WLL=WLIL-WLOL-TLIL+TLOL
+      UCR=UCIR-UCOR-RCIR+RCOR-ULR
+      UCL=UCIL-UCOL-RCIL+RCOL-ULL
+      VCR=VCIR-VCOR-SCIR+SCOR-VLR
+      VCL=VCIL-VCOL-SCIL+SCOL-VLL
+      WCR=WCIR-WCOR-TCIR+TCOR-WLR
+      WCL=WCIL-WCOL-TCIL+TCOL-WLL
+      CALL TRANS(UCR,VCR,WCR,UCL,VCL,WCL,UC(J),VC(J),WC(J),AC(J))
+      CALL TRANS (ULR,VLR,WLR,ULL,VLL,WLL,UL(L+1),VL(L+1),WL(L+1
+     1),AN(L+1))
+      IF (L.EQ.1) GO TO 220
+  180 CALL TRANS (UIR,VIR,WIR,UIL,VIL,WIL,UI,VI,WI,AI)
+      CALL TRANS (UOR,VOR,WOR,UOL,VOL,WOL,UO,VO,WO,AO)
+      CALL TRANS (UAR,VAR,WAR,UAL,VAL,WAL,UA,VA,WA,BA)
+      IF (L.EQ.NR1) GO TO 190
+      UC(J)=UC(J)+UL(L)
+      VC(J)=VC(J)+VL(L)
+      WC(J)=WC(J)+WL(L)
+      AC(J)=AC(J)+AN(L)
+      GO TO 200
+  190 UC(J)=UL(L)
+      VC(J)=VL(L)
+      WC(J)=WL(L)
+      AC(J)=AN(L)
+  200 CONTINUE
+      DO 210 K=2,L
+      K1=K-1
+      UW=UI*CI(K1)-UO*CO(K1)+UA*A(K1)
+      VW=VI*CI(K1)-VO*CO(K1)+VA*A(K1)
+      WW=WI*CI(K1)-WO*CO(K1)+WA*A(K1)
+      AW=AI*CI(K1)-AO*CO(K1)+BA*A(K1)
+      JK=JL+K-2
+      IF (NSIDE.EQ.2.AND.K.GT.2) JK=JK+NR
+      UC(JK)=UC(JK)+UW
+      VC(JK)=VC(JK)+VW
+      WC(JK)=WC(JK)+WW
+      AC(JK)=AC(JK)+AW
+      IF (L.EQ.NR1) GO TO 210
+      JM=JK+1
+      IF (NSIDE.EQ.2.AND.K.EQ.2) JM=JM+NR
+       UC(JM)=UC(JM)+UW
+      VC(JM)=VC(JM)+VW
+      WC(JM)=WC(JM)+WW
+      AC(JM)=AC(JM)+AW
+  210 CONTINUE
+  220 CONTINUE
+      IF (NSIDE.EQ.1) GO TO 240
+      IF (L.NE.1) GO TO 230
+C     IF(L.EQ.NR1) GO TO 230
+      UC(JL)=UC(JL)+UC(J)
+      VC(JL)=VC(JL)+VC(J)
+      WC(JL)=WC(JL)+WC(J)
+      AC(JL)=AC(JL)+AC(J)
+C     JL=JL+1
+      J=J-1
+  230 IF (L.NE.NR1) GO TO 240
+      J=J-1
+  240 IF (NWING.LE.NMAX) GO TO 250
+      IF (NPART.EQ.2) GO TO 250
+      IF (I.LT.J1.OR.I.GT.J2) GO TO 250
+      JS1=J1
+      JS2=J2
+      NRS=NR2
+  250 CONTINUE
+  260 CONTINUE
+      NR12=NR1-2
+      DO 251 JPOL=1,NR12
+      UC(JL+JPOL)=UC(JL+JPOL)+UC(JT+JPOL)
+      VC(JL+JPOL)=VC(JL+JPOL)+VC(JT+JPOL)
+      WC(JL+JPOL)=WC(JL+JPOL)+WC(JT+JPOL)
+  251 AC(JL+JPOL)=AC(JL+JPOL)+AC(JT+JPOL)
+      J=JT-1
+C     UC(JT)=US
+C     VC(JT)=VS
+C     WC(JT)=WS
+C     AC(JT)=AS
+      JJ=JVOR
+      DO 261 NSIDE=1,2
+C
+C     B\\\C\EH\E B\\\H\E OT KA\\O\ \AHE\\
+C
+      DO 261  L=1,NR1
+      J=J+1
+      IF (L.EQ.NR1)  GO TO 231
+      JJ=JJ+1
+      SIND=SINBD(JJ)
+      COSD=COSBD(JJ)
+      TAND=TANBD(JJ)
+      THETA=THET(JJ)
+      COST=COS(THETA)
+      SINT=SIN(THETA)
+      COSTD=COST*COSD
+      CONTD=SQRT(SGN*TAND*TAND+COST*COST)
+      COSDTD=1.d0/(COSD*CONTD)
+      CONTDD=1.d0/CONTD
+      DO 263 IP=1,2
+      DO 263 IK=1,2
+      IP1=IP+L-1
+      IK1=IK+N-1
+      ZC(IP1,IK1)=ZPT(JJ)+(YC(IP1,IK1)-YPT(JJ))*SINT/COST-
+     *(XPT(JJ)-XC(IP1,IK1))*TAND/COST
+  263 CONTINUE
+      DO 51 M=1,2
+      M1=L+M-1
+      DXC=XC(M1,N+1)-XC(M1,N)
+      DYC=YC(M1,N+1)-YC(M1,N)
+C     IF (NSIDE.EQ.1) DZC=ZU(M1,N+1)-ZU(M1,N)
+      IF (NSIDE.NE.9) DZC=ZC(M1,N+1)-ZC(M1,N)
+      DYC=BETA*DYC
+      DZC=BETA*DZC
+      DZL=DZC*COSTD-DXC*SIND
+      DYL=DYC*COSD*CONTD+SINT*DZL*CONTDD
+      DXL=(DXC*COSTD+DZC*SIND*SGN)*COSDTD
+      BL=DXL/DYL
+      IF (M.EQ.1) BLE(1)=BL
+      IF (M.EQ.2) BTE=BL
+   51 CONTINUE
+      AL=BLE(1)-BTE
+      A(L)=AL
+C     B\\\C\EH\E XOP\ \AHE\E\
+      DO 131  K=1,2
+      N1=N+K-1
+      DXC=XC(L+1,N1)-XC(L,N1)
+      DYC=YC(L+1,N1)-YC(L,N1)
+C     IF (NSIDE.EQ.1) DZC=ZU(L+1,N1)-ZU(L,N1)
+      IF (NSIDE.NE.9) DZC=ZC(L+1,N1)-ZC(L,N1)
+      CL=(DXC*COSTD+BETA*DZC*SIND*SGN)*COSDTD
+      IF (K.EQ.1) CI(L)=CL
+      IF (K.EQ.2) CO(L)=CL
+      DO 131 M=1,2
+      M1=L+M-1
+      DX=XI-XC(M1,N1)
+      DY=YI-YC(M1,N1)
+C     IF (NSIDE.EQ.1) DZ=ZI-ZU(M1,N1)
+      IF (NSIDE.NE.9) DZ=ZI-ZC(M1,N1)
+      DY=BETA*DY
+      DZ=BETA*DZ
+      XJ=(DX*COSTD+DZ*SIND*SGN)*COSDTD
+      ZJ=DZ*COSTD-DX*SIND
+      YJ=DY*COSD*CONTD+SINT*ZJ*CONTDD
+      ZJ=ZJ-DY*COSD*SINT
+      IF(M.EQ.1) BL=BLE(1)
+      IF (M.EQ.2) BL=BTE
+      BPOS=.FALSE.
+      IF(BL.GE.0.0d0) BPOS=.TRUE.
+      BL=ABS(BL)
+      IF (K.EQ.2) GO TO 91
+      IF (M.EQ.2) GO TO 61
+      CALL SORWIN (UCIR,VCIR,WCIR)
+      GO TO 71
+   61 CALL SORWIN (RCIR,SCIR,TCIR)
+   71 DY=-YI-YC(M1,N1)
+      DY=BETA*DY
+      ZJ=DZ*COSTD-DX*SIND
+      YJ=DY*COSD*CONTD+SINT*ZJ*CONTDD
+      ZJ=ZJ-DY*COSD*SINT
+      IF (M.EQ.2) GO TO 81
+      CALL SORWIN (UCIL,VCIL,WCIL)
+      GO TO 131
+   81 CALL SORWIN (RCIL,SCIL,TCIL)
+      GO TO 131
+   91 IF (M.EQ.2) GO TO 101
+      CALL SORWIN (UCOR,VCOR,WCOR)
+      GO TO 111
+  101 CALL SORWIN (RCOR,SCOR,TCOR)
+  111 DY=-YI-YC(M1,N1)
+      DY=BETA*DY
+      ZJ=DZ*COSTD-DX*SIND
+      YJ=DY*COSD*CONTD+SINT*ZJ*CONTDD
+      ZJ=ZJ-DY*COSD*SINT
+      IF (M.EQ.2) GO TO 121
+      CALL SORWIN (UCOL,VCOL,WCOL)
+      GO TO 131
+  121 CALL SORWIN (RCOL,SCOL,TCOL)
+  131 CONTINUE
+      UCR=UCIR-UCOR-RCIR+RCOR
+      UCL=UCIL-UCOL-RCIL+RCOL
+      VCR=VCIR-VCOR-SCIR+SCOR
+      VCL=VCIL-VCOL-SCIL+SCOL
+      WCR=WCIR-WCOR-TCIR+TCOR
+      WCL=WCIL-WCOL-TCIL+TCOL
+C    1H\E K OCHOBHO\ C\CTEME KOOP\\HAT.
+      CALL TRANS(UCR,VCR,WCR,UCL,VCL,WCL,UC(J),VC(J),WC(J),AC(J))
+      IF (NSIDE.EQ.1) GO TO 261
+C     IF (L.NE.1) GO TO 230
+      UC(JT)=UC(JT)+UC(J)
+      VC(JT)=VC(JT)+VC(J)
+      WC(JT)=WC(JT)+WC(J)
+      AC(JT)=AC(JT)+AC(J)
+      JT=JT+1
+      J=J-1
+      GO TO 261
+  231 J=J-1
+  261 CONTINUE
+  270 CONTINUE
+      NWING=J
+      NWTHK=NWING
+      IF (NWING.LE.NMAX) GO TO 290
+      IF (NPART.EQ.2) GO TO 290
+      DO 280  J=1,NWING
+      IF (J.LT.JS1.OR.J.GT.JS2) GO TO 280
+      M=J-JS1+1
+      DC(M)=AC(J)
+      AC(J)=0.d0
+  280 CONTINUE
+      WRITE(12) (DC(J),J=1,NRS)
+  290 CONTINUE
+C===========================================
+      PRINT 370,I
+C===========================================
+      IF (IABS(PRENT).LT.4) GO TO 300
+      PRINT 370,I
+      PRINT 330,NWING
+      PRINT 360,(UC(J),J=1,NWING)
+      PRINT 360,(VC(J),J=1,NWING)
+      PRINT 360,(WC(J),J=1,NWING)
+      PRINT 340,NWING
+      PRINT 360,(AC(J),J=1,NWING)
+      IF (NWING.GT.NMAX) PRINT 350,NR
+      IF (NWING.GT.NMAX) PRINT 360,(DC(J),J=1,NRS)
+  300 WRITE(10) (UC(J),VC(J),WC(J),J=1,NWING)
+      WRITE(11) (AC(J),J=1,NWING)
+  310 CONTINUE
+      RETURN
+  320 PRINT 380
+c      CALL EXIT
+      stop
+  330 FORMAT (2X,10HUC(J),J=1,,I3)
+  340 FORMAT (2X,10HAC(J),J=1,,I3)
+  350 FORMAT (2X,10HDC(J),J=1,,I3)
+  360 FORMAT (1H ,10F10.5)
+  370 FORMAT (1H ,22HAERODYNAMIC MATRIX, I=I3)
+  380 FORMAT (1H ,43HERROR - WING PANEL SLOPE EXCEEDS MACH ANGLE)
+      END
+C     ****************************
+      SUBROUTINE SORWIN (UC,VC,WC)
+C     ****************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /COMPS1/ X,DELTAY,DELTAZ,A,B,C,SUB,BPOS,ML,NSIDE
+      LOGICAL SUB,SUP,BPOS,BNEG,SUPLE
+      COST=1.d0
+      SINT=0.d0
+      EPS=.000001d0
+      EPS1=1.0d-14
+      PI=3.14159265d0
+      SUP=.NOT.SUB
+      SUPLE=.FALSE.
+      BNEG=.NOT.BPOS
+      IF(ABS(B).LE.EPS) B=0.d0
+      SGN=1.0d0
+      IF(SUP)SGN=-1.0d0
+      BT1=SGN+B*B
+      BTERM=SQRT(ABS(BT1))
+      BTERMD=1.d0/BTERM
+      Y=DELTAY*COST+DELTAZ*SINT
+      IF(BNEG) Y=-Y
+      Z=DELTAZ*COST-DELTAY*SINT
+      IF(ABS(Y).LE.EPS) Y=0.d0
+      IF(ABS(Z).LE.EPS) Z=0.d0
+      X2=X*X
+      Y2=Y*Y
+      Z2=Z*Z
+      R2=Y2+Z2
+      R=SQRT(R2)
+      IF(SUB) GO TO 10
+      IF (B.LT.1.0d0) SUPLE=.TRUE.
+      IF (X.LE.0.0d0)GO TO 170
+      D=0.d0
+      IF (X2.GT.R2) D=SQRT(X2-R2)
+      GO TO 20
+   10 D=SQRT(X2+R2)
+   20 CONTINUE
+      T2=B*X+SGN*Y
+      T3=X-B*Y
+      AT3=ABS(T3)
+      IF(AT3.LE.EPS) AT3=0.d0
+      UC=-PI*BTERMD
+      IF (D.GT.0.0d0) GO TO 30
+      IF (Y.LE.B*X) GO TO 170
+      IF (T3.LE.0.0d0) GO TO 170
+      IF (X.LE.(B*Y+BTERM*ABS(Z))) GO TO 170
+      SZ=SIGN(1.d0,Z)
+      UC=-PI/BTERM
+      VC=-B*UC
+      WC=SZ*PI
+      UL=-PI*(T3*BTERMD-Z*SZ)
+      VL=-B*UL
+      WL=-SZ*BTERM*UL
+      GO TO 160
+   30 IF (SUP.AND.X2.LE.R2) GO TO 170
+      IF (ABS(Z).LT.EPS1) GO TO 80
+      DENOM=B*R2-X*Y
+      F1=ATAN2(Z*D,DENOM)
+      IF (SUB) F1=F1-ATAN2(Z,Y)
+      G1=0.d0
+      IF (ABS(BTERM).LT.EPS1) GO TO 60
+      ARG=T2
+      TZ=T3*T3+BT1*Z2
+      IF (TZ.GT.0.0d0) ST3=SQRT(TZ)
+      IF (SUPLE) GO TO 50
+      ARG=ARG+D*BTERM
+      ARG=ARG/ST3
+      IF (ARG.GT.0.0d0) G1=DLOG(ARG)*BTERMD
+      GO TO 70
+   50 G1=(PI/2.d0-ASIN(ARG/ST3))*BTERMD
+      GO TO 70
+   60 IF (ABS(T2).GT.EPS1) G1=D/T2
+   70 G2=DLOG((X+D)/R)
+      G3=0.d0
+      IF (SUB) G3=DLOG(R)
+      C1=D
+      IF (SUB) C1=X+D
+      G=BT1*G1-B*G2+B*G3
+      H=B*G1-G2+G3
+      UC=-G1
+      VC=H
+      WC=F1
+      UL=Z*F1-T3*G1-Y*(G2-G3)
+      VL=T3*H+C1-B*Z*F1
+      WL=T3*F1+Z*G
+      GO TO 160
+  80  CONTINUE
+      F1=0.d0
+      DENOM=-Y*T3
+      IF (ABS(DENOM).GT.EPS1) F1=ATAN2(0.d0,DENOM)
+      IF (SUB.AND.ABS(Y).GT.EPS1) F1=F1-ATAN2(0.d0,Y)
+      IF(NSIDE.EQ.2) F1=-F1
+      IF (SUPLE) GO TO 100
+      G1=0.d0
+      IF (ABS(BTERM).LT.EPS1) GO TO 110
+      IF (AT3.GT.0.0d0) GO TO 90
+      G1=(100.d0+DLOG(2.d0*BT1*ABS(Y)))*BTERMD
+      IF (SUB.AND.Y.LT.0.0d0) G1=-G1
+      GO TO 120
+   90 ARG=T2+D*BTERM
+      ARG=ARG/AT3
+      IF (ARG.GT.0.0d0) G1=DLOG(ARG)*BTERMD
+      GO TO 120
+  100 G1=(PI/2.d0-ASIN(T2/AT3))*BTERMD
+      GO TO 120
+  110 IF (ABS(T2).GT.EPS1) G1=D/T2
+  120 G2=100.d0
+      IF (ABS(Y).LT.EPS1) GO TO 130
+      G2=DLOG((X+D)/ABS(Y))
+      GO TO 140
+  130 IF (ABS(X).GT.EPS1) G2=G2+DLOG(2.d0*ABS(X))
+      IF (X.LT.0.0d0) G2=-G2
+  140 C1=D
+      G3=0.d0
+      IF (.NOT.SUB) GO TO 150
+      C1=X+D
+      IF (ABS(Y).GT.EPS1) G3=DLOG(ABS(Y))
+      IF (ABS(Y).LT.EPS1) G3=-100.d0
+  150 H=B*G1-G2+G3
+      UC=-G1
+      VC=H
+      WC=F1
+      UL=-T3*G1-Y*G2
+      VL=T3*H+C1
+      WL=T3*F1
+C
+  160 IF (BPOS) GO TO 180
+      UC=-UC
+      WC=-WC
+      UL=-UL
+      WL=-WL
+      RETURN
+  170 UC=0.d0
+      VC=0.d0
+      WC=0.d0
+      UL=0.d0
+      VL=0.d0
+      WL=0.d0
+ 180  RETURN
+      END
+C     ****************************************************************
+      SUBROUTINE VORPAN (UC,VC,WC,UL,VL,WL,ULT,VLT,WLT,VE,WE,VA,WA)
+C     ***************************************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /PARAM/NBODY,NWING,NTAIL,LBC,THK,NH,MACH,ALPHA,REFA,
+     *SIDES,DUM(6)
+      COMMON /COMPS1/ X,Y,Z,A,B,C,SUB,BPOS,ML,NS
+      DIMENSION Q(51),XI(51),QX(51)
+      REAL*8 MACH
+      LOGICAL SUB,SUP,BPOS,SUPLE,LBC,BNEG,THK
+      EPS=1.0d-6
+      EPS1=1.0d-14
+      PI=3.14159265358d0
+      IF (ABS(C).LE.EPS) C=0.d0
+      CC=C*C
+      SUP=.NOT.SUB
+      SUPLE=.FALSE.
+      BNEG=.NOT.BPOS
+      IF(BNEG) A=-A
+      IF(BNEG) Y=-Y
+      IF (ABS(B).LE.EPS) B=0.d0
+      AB=A+B
+      SGN=1.0d0
+      IF (SUP) SGN=-1.0d0
+      B1=SGN+B*B
+      SB1=SQRT(ABS(B1))
+      IF (ABS(Y).LE.EPS) Y=0.d0
+      IF (ABS(Z).LE.EPS) Z=0.d0
+      X2=X*X
+      Y2=Y*Y
+      Z2=Z*Z
+      R2=Y2+Z2
+      R=SQRT(R2)
+      VA=0.d0
+      VE=0.d0
+      WA=0.d0
+      WE=0.d0
+      IF(SUB) GO TO 10
+      IF (ABS(B).LT.1.0d0) SUPLE=.TRUE.
+      IF (X.LT.0.0d0) GO TO 340
+   10 D=0.d0
+      D2=X2+SGN*R2
+      IF (D2.GT.0.0d0) D=SQRT(D2)
+      AZ=A*Z
+      T1=C-A*Y
+      IF (ABS(T1).LE.EPS) T1=0.d0
+      T2=T1*T1
+      T3=X-B*Y
+      AT3=ABS(T3)
+      IF (AT3.LE.EPS) AT3=0.d0
+      T4=AZ*AZ
+      T5=T2+T4
+      IF (ABS(T5).GT.EPS1) T5=1.d0/T5
+      T6=B*C-A*X
+      T7=T6*T6
+      T8=T7+SGN*(T2+T4)
+      T9=T1*T3+A*B*Z2
+      E=SQRT(ABS(T8))
+      B2=SGN*(C*Y-A*R2)
+      B3=B*X+SGN*Y
+      B4=T5*T6
+      TZ=T3*T3+B1*Z2
+      IF (TZ.GT.0.0d0) ST3=SQRT(TZ)
+      WQ=0.d0
+      IF (ABS(A).LT.EPS1.OR.ML.EQ.2) GO TO 80
+      MAX=11
+      XI(1)=0.d0
+      EL=1.0d0
+      IF (SUP.AND.X.LT.C) EL=X/C
+      DXI=EL/DFLOAT(MAX-1)
+      XO=0.d0
+      IF(ABS(T1).GT.EPS1) XO=T3/T1
+      DO 70  M=1,MAX
+      Q(M)=0.d0
+      IF(M.GT.1) XI(M)=XI(M-1)+DXI
+      DX=X-XI(M)*C
+      IF (SUP.AND.DX.LT.0.0d0) GO TO 60
+      DX2=DX*DX
+      BX=B-A*XI(M)
+      BX2=BX*BX
+      BX1=SGN+BX2
+      SBX=SQRT(ABS(BX1))
+      SDX=0.d0
+      DXR=DX2+SGN*R2
+      IF (DXR.GT.0.0d0) SDX=SQRT(DXR)
+      IF (ABS(SDX).LT.EPS1) GO TO 20
+      ARG=SGN*Y+BX*DX
+      IF (ABS(SBX).LT.EPS1)  GO TO 40
+      TZI=(T3-XI(M)*T1)**2+BX1*Z2
+      IF (ABS(TZI).LT.EPS1) GO TO 50
+      STZ=SQRT(TZI)
+      IF (SUP.AND.BX.LT.1.0d0)  GO TO 30
+      ARG=(ARG+SBX*SDX)/STZ
+      IF (SUP) ARG=ABS(ARG)
+      IF (ARG.GT.0.0d0) Q(M)=DLOG(ARG)*BX/SBX
+      GO TO 60
+   20 IF (T1.LT.BX*T6.AND.T8.LT.0.0d0) GO TO 60
+      IF (Y.LE.BX*DX) GO TO 60
+      IF (DX.LT.(BX*Y+SBX*ABS(Z))) GO TO 60
+      Q(M)=PI*BX/SBX
+      GO TO 60
+   30 ARG=ARG/STZ
+      IF (ARG.GT.1.0d0) GO TO 60
+      IF (ARG.LE.-1.0d0) GO TO 20
+      Q(M)=(PI/2.d0-ASIN(ARG))*BX/SBX
+      GO TO 60
+   40 Q(M)=SDX*BX/ARG
+      GO TO 60
+   50 Q(M)=100.d0
+      IF (Y.LT.0.0d0) Q(M)=-DLOG(ABS(Y))*BX/SBX
+   60 CONTINUE
+      QX(M)=Q(M)*XI(M)
+   70 CONTINUE
+      CALL TRAP (XI,QX,WQ,MAX)
+   80 CONTINUE
+      IF (.NOT.SUPLE)  GO TO  100
+      G3=0.d0
+      IF (D.GT.0.0d0)  GO TO 100
+      IF (Y.LE.B*X) GO TO 340
+      IF (X.LT.(B*Y+SB1*ABS(Z))) GO TO 340
+      SZ=SIGN(1.d0,Z)
+      PZ=PI*SZ
+      UC=PZ
+      VC=-B*PZ
+      WC=-SZ*SB1*PZ
+      IF (T8.GT.0.0d0) E=0.d0
+      SL=PI*T5*(SZ*T9-Z*E)
+      TL=SZ*E*T5*SL
+      IF (T8.GT.0.0d0)  TL=PI*T5*T5*T8*ABS(Z)
+      IF (ML.EQ.2) GO TO 90
+      UL=SL
+      VL=-((B+T1*B4)*SL-AZ*TL)*0.5d0
+      WL=AZ*B4*SL-T1*TL+A*WQ
+      IF (.NOT.LBC.AND.ML.EQ.1)  GO TO 330
+   90 ULS=SL+PZ
+      ULT=ULS
+      TT=SZ*E*T5*ULS
+      IF (T8.GT.0) TT=TL
+      VLT=(A*PZ-(AB+T1*B4)*ULS+AZ*TT)*0.5d0
+      WLT=AZ*B4*ULS-T1*TT
+      GO TO 330
+  100 IF (SUP.AND.ABS(D).LT.EPS1) GO TO 340
+      IF (ABS(Z).LT.EPS1) GO TO 190
+      DENOM=B*R2-X*Y
+      F1=ATAN2(Z*D,DENOM)
+      IF(SUB) F1=F1-ATAN2(Z,Y)
+      G1=0.d0
+      IF(ABS(T8).LT.EPS1) GO TO 130
+      IF (ABS(C).LT.EPS1) GO TO 110
+      ARG=X*T6+B2
+      IF (T8.LT.0.0d0) GO TO 120
+      ARG=(ARG+D*E)/(ST3*C)
+      IF (SUP) ARG=ABS(ARG)
+      IF (ARG.GT.0.0d0) G1=DLOG(ARG)
+      GO TO 130
+  110 IF (ABS(ST3).GT.EPS1) G1=DLOG(ST3)
+      IF(A.LT.0.0d0) G1=-G1
+      GO TO 130
+  120 ARG=ARG/(ST3*C)
+      IF (ABS(ARG).GT.1.0d0) GO TO 130
+      G1=-(PI/2.d0-ASIN(ARG))
+  130 H1=0.d0
+      IF (LBC.AND.ML.EQ.2) GO TO 150
+      IF (ABS(SB1).LT.EPS1) GO TO 150
+      ARH=B3
+      IF (SUPLE)  GO TO 140
+      ARH=(ARH+D*SB1)/ST3
+      IF(ARH.GT.0.0d0) H1=DLOG(ARH)
+      GO TO 150
+  140 H1=-(PI/2.d0-ASIN(ARH/ST3))
+  150 G2=DLOG((X+D)/R)
+      G3=0.d0
+      IF(SUB) G3=DLOG(R)
+      C1=D
+      IF (SUB) C1=X+C1
+      C2=C1/R2
+      H=SB1*H1-B*(G2-G3)
+      IF (ABS(SB1).LT.EPS1) H2=B*D/B3-G2+G3
+      IF (ABS(SB1).GT.EPS1) H2=B*H1/SB1-G2+G3
+      UC=F1
+      VS=-B*F1+Z*C2
+      WS=H-Y*C2
+      VC=VS
+      WC=WS
+      IF (ABS(C).LT.EPS1) C2=0.d0
+      C3=0.d0
+      C4=0.d0
+      C5=G2/2.d0
+      IF (ABS(C).LT.EPS1) GO TO 160
+      C3=(X*C2+SGN*G2)/(2.d0*C)
+      C4=((X2-SGN*R2*0.5d0)*G2-1.5d0*X*D)/(2.d0*CC)
+      C5=(D-X*G2)/C
+  160 IF (LBC) GO TO 170
+      C6=.50d0/R2
+      IF (SUB) C6=C6*C1/D
+      C2=C2+C6*C
+      VB=-F1*0.5d0
+      WB=H2*0.5d0
+      VD=Z*C6
+      WD=-Y*C6
+      VA=VB
+      WA=WB
+      VE=VD
+      WE=WD
+      IF (ML.EQ.1) GO TO 170
+      VC=VS+C*VD+A*VB
+      WC=WS+C*WD+A*WB
+  170 WQ=WQ-C4
+      G=E*G1-T6*G2
+      SL=T5*(T9*F1+Z*G)
+      TL=-B*D
+      IF (ABS(C).GT.EPS1) TL=(B2*G2+T6*D)/C
+      TL=-T5*(T5*(G*T9-Z*T8*F1)+TL)
+      IF (ML.EQ.2) GO TO 180
+      UL=SL
+      VL=-((B+T1*B4)*SL-AZ*TL)*0.5d0+Z*C3
+      WL=AZ*B4*SL-T1*TL-Y*C3+A*WQ
+      IF (.NOT.LBC.AND.ML.EQ.1) GO TO 330
+  180 ULS=SL+F1
+      ULT=ULS
+      TLT=TL-T5*G
+      WQT=C5-C4-G3*0.5d0
+      VLS=(A*F1-(AB+T1*B4)*ULS+AZ*TLT)*0.5d0+Z*(C2+C3)
+      VLT=VLS
+      WLS=AZ*B4*ULS-T1*TLT-Y*(C2+C3)+A*WQT
+      WLT=WLS
+      IF (LBC) GO TO  330
+      VLT=VLS+A*VB
+      WLT=WLS+A*WB
+      GO TO 330
+  190 CONTINUE
+      F1=0.d0
+      DENOM=-Y*T3
+      IF(ABS(DENOM).GT.EPS1) F1=ATAN2(0.d0,DENOM)
+      IF (SUB.AND.ABS(Y).GT.EPS1) F1=F1-ATAN2(0.d0,Y)
+      IF (NS.EQ.2)  F1=-F1
+      G1=0.d0
+      IF (ABS(T8).LT.EPS1)  GO TO 230
+      IF (ABS(C).LT.EPS1)   GO TO 210
+      IF (T8.LT.0.0d0) GO TO 220
+      IF (AT3.GT.0.0d0) GO TO 200
+      IF (ABS(Y).LT.EPS1.OR.T1.LE.0.0d0)  GO TO 230
+      G1=DLOG(T1*ABS(Y))
+      IF (SUB.AND.Y.LT.0.0d0) G1=-G1
+      IF (Y.GT.0.0d0)  G1=100.d0+G1
+      GO TO  230
+  200 ARG=(X*T6+SGN*Y*T1+D*E)/(AT3*C)
+      IF (SUP) ARG=ABS(ARG)
+      IF (ARG.GT.0.0d0)  G1=DLOG(ARG)
+      GO TO 230
+  210 IF (ABS(AT3).GT.EPS1)  G1=DLOG(AT3)
+      IF (A.LT.0.0d0) G1=-G1
+      GO TO 230
+  220 ARG=(X*T6-Y*T1)/(AT3*C)
+      IF (ABS(ARG).GT.1.0d0) GO TO 230
+      G1=-(PI/2.d0-ASIN(ARG))
+  230 H1=0.d0
+      IF (LBC.AND.ML.EQ.2) GO TO 260
+      IF (SB1.EQ.0.0d0) GO TO 260
+      IF (SUPLE)  GO TO 250
+      IF (AT3.GT.0.0d0) GO TO 240
+      IF (ABS(Y).LT.EPS1) GO TO 260
+      H1=DLOG(ABS(Y))
+      IF (SUB.AND.Y.LT.0.0d0)  H1=-H1
+      IF (Y.GT.0.0d0) H1=100.d0+H1
+      GO TO 260
+  240 CONTINUE
+      ARH=(B3+D*SB1)/AT3
+      IF (ARH.GT.0.0d0)  H1=DLOG(ARH)
+      GO TO 260
+  250 H1=-(PI/2.d0-ASIN(B3/AT3))
+  260 G2=100.d0
+      IF (ABS(Y).GT.EPS1) GO TO 270
+      IF (ABS(Y).GT.EPS1) G2=G2+DLOG(2.d0*ABS(X))
+      IF (X.LT.0.0d0) G2=-G2
+      GO TO 280
+  270 G2=DLOG((X+D)/ABS(Y))
+  280 G3=0.d0
+      C1=D
+      IF (.NOT.SUB) GO TO 290
+      C1=X+D
+      G3=-100.d0
+      IF (ABS(Y).GT.EPS1) G3=DLOG(ABS(Y))
+  290 C2=0.d0
+      IF (ABS(Y).GT.EPS1) C2=C1/Y2
+      H=SB1*H1-B*(G2-G3)
+      IF (ABS(SB1).LT.EPS1) H2=B*D/B3-G2+G3
+      IF (ABS(SB1).GT.EPS1) H2=B*H1/SB1-G2+G3
+      UC=F1
+      VS=-B*F1
+      WS=H-Y*C2
+      VC=VS
+      WC=WS
+      IF (ABS(C).LT.EPS1) C2=0.d0
+      C4=0.d0
+      C5=G2*0.5d0
+      IF (ABS(C).LT.EPS1)  GO TO 300
+      C3=(X*C2+SGN*G2)*0.5d0
+      C4=((X2-SGN*Y2*0.5d0)*G2-1.5d0*X*D)/(2.d0*CC)
+      C5=(D-X*G2)/C
+  300 IF (LBC) GO TO 310
+      C6=0.d0
+      IF (ABS(Y).GT.EPS1) C6=.50d0/Y2
+      IF (SUB.AND.ABS(D).GT.EPS1) C6=C6*C1/D
+      C2=C2+C6*C
+      VB=-F1*0.5d0
+      WB=H2*0.5d0
+      WD=-Y*C6
+      VA=VB
+      WA=WB
+      WE=WD
+      IF (ML.EQ.1)  GO TO 310
+      VC=VS+A*VB
+      WC=WS+A*WB+C*WD
+  310 WQ=WQ-C4
+      WQT=C5-C4-G3*0.5d0
+      IF (ABS(T1).GT.EPS1) GO TO 320
+      WL=A*WQ
+      WLS=A*WQT
+      WLT=WLS
+      IF (.NOT.LBC)  WLT=WLS+A*WB
+      GO TO 350
+  320 SL=T3*F1/T1
+      UL=SL
+      VL=-(B+T6/T1)*SL*0.5d0
+      G=E*G1-T6*G2
+      TL=T3*T5*G
+      IF (ABS(C).LT.EPS1) TL=TL-B*D/T1
+      IF (ABS(C).GT.EPS1) TL=TL+(T6*D/T1+Y*(SGN*G2-C3))/C
+      WL=TL+A*WQ
+      IF (.NOT.LBC.AND.ML.EQ.1)  GO TO 330
+      ULS=SL+F1
+      VLS=(A*F1-(AB+T6/T1)*ULS)*0.5d0
+      WLS=TL+G/T1-Y*C2+A*WQT
+      ULT=ULS
+      VLT=VLS
+      WLT=WLS
+      IF (LBC)  GO TO 330
+      VLT=VLS+A*VB
+      WLT=WLS+A*WB
+  330 GO TO 360
+  340 UC=0.d0
+      VC=0.d0
+      WC=0.d0
+      WL=0.d0
+      WLT=0.d0
+  350 UL=0.d0
+      VL=0.d0
+      ULT=0.d0
+      VLT=0.d0
+C     IF (C.EQ.0.0d0)  GO TO 330
+      GO TO 360
+  360 CONTINUE
+      IF(BNEG) GO TO 370
+      GO TO 380
+  370 UC=-UC
+      WC=-WC
+      UL=-UL
+      WL=-WL
+      ULT=-ULT
+      WLT=-WLT
+      WE=-WE
+      WA=-WA
+  380 CONTINUE
+      RETURN
+      END
+C     *********************************************
+      SUBROUTINE  TRANS (UR,VR,WR,UL,VL,WL,U,V,W,A)
+C    **********************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /TRAN/ SIND,COSD,TAND,SINT,COST,CONTD,SINTI,COSTI,
+     1CON,BCON,DI
+      VW=SINT*(VR+VL)+CONTD*(WR+WL)
+      U=CON*(COST*(UR+UL)-SIND*VW)/CONTD
+      V=BCON*COSD*(CONTD*(VR-VL)-SINT*(WR-WL))
+      W=BCON*(TAND*(UR+UL)+COST*COSD*VW)/CONTD
+      A=COSTI*W-SINTI*V-DI*U
+      END
+C*********************************************************
+C*********************************************************
+      FUNCTION ISUMMA (NFU,JMAXX,KKRAD)
+C*********************************************************
+C*********************************************************
+      IMPLICIT REAL*8 (A-H,O-Z)
+      DIMENSION JMAXX(NFU),KKRAD(NFU)
+      ISIGM=0
+      IF(NFU.EQ.1) GO TO 20
+      NFU1=NFU-1
+      DO 10 IS=1,NFU1
+  10  ISIGM=ISIGM+JMAXX(IS)*(KKRAD(IS)-1)
+  20  ISUMMA=ISIGM
+      RETURN
+      END
+C=================================================
+      SUBROUTINE OUTDAT(NNOUT)
+      IMPLICIT REAL*8 (A-H,O-Z)
+      COMMON /HEAD/ TITLE1(8),TITLE2(8)
+      COMMON /BLRR/ XXB(60),YYB(30,30),ZZB(30,30),FXPL(8),NXPL,NNNX,NNYZ
+      common /inp_file/ inpf,outf,outhl,outiz,outbl,outcp,outfd
+      character *80 inpf,outf,outhl,outiz,outbl,outcp,outfd
+C-------------------------------------------------------------------
+C---  CHANNEL 029 - TO PROGRAM PAR_BL (BOUNDARY LAYER)           ---
+C---  CHANNEL 028 - TO PROGRAM PIC_CP (DRAWING OF THE PRESSURE DIST.)
+C---  CHANNEL 026 - TO PROGRAM PIC_IZ (DRAWING OF THE IZOBARS)   ---
+C--------------------------------------------------------------------
+   10 FNVB=0.0
+      FNX=NNNX
+      FNYZ=NNYZ
+      FNXPL=NXPL
+      FRCP=1.0
+      FKVAR=1.0
+      IF (NNOUT.NE.26) GO TO 200
+C-------------------------------------------------------------------
+C---  CHANNEL 026 - TO PROGRAM PIC_IZ (DRAWING OF THE IZOBARS)   ---
+      FXMIN=0.0
+      FXMAX=4.5
+      FYMIN=0.0
+      FYMAX=4.5
+      FCPMIN=-1.0
+      FCPMAX=1.0
+      FDCP=0.1
+      OPEN ( UNIT=26, FILE=outiz ,STATUS='UNKNOWN')
+      rewind 26
+      WRITE (026,1008) (TITLE1(IJJ),IJJ=1,8)
+      WRITE (026,1030)
+      WRITE (026,1003) FXMIN,FXMAX,FYMIN,FYMAX,FCPMIN,FCPMAX,FDCP
+      WRITE (026,1031)
+      WRITE (026,1003) FNVB,FNX,FNYZ,FKVAR
+      WRITE (026,1012)
+      WRITE (026,1006) (XXB(IIJ),IIJ=1,NNNX)
+      DO 150 IIJ=1,NNNX
+      WRITE (026,1007) IIJ
+      WRITE (026,1006) (YYB(IIJ,JJJ),JJJ=1,NNYZ)
+      WRITE (026,1006) (ZZB(IIJ,JJJ),JJJ=1,NNYZ)
+  150 CONTINUE
+ 1030 FORMAT('<  XMIN  ><  XMAX  ><  YMIN  ><  YMAX  >',
+     1 '< CPMIN  >< CPMAX  ><  DCP   >')
+ 1031 FORMAT('<  NVB   ><   NX   ><  NYZ   ><  FKVAR >')
+      GO TO 400
+  200 IF (NNOUT.NE.28) GO TO 300
+C--------------------------------------------------------------------
+C---  CHANNEL 028 - TO PROGRAM PIC_CP (DRAWING OF THE PRESSURE DIST.)
+      YGRND=0.0
+      OPEN ( UNIT=28, FILE=outcp ,STATUS='UNKNOWN')
+      rewind 28
+      WRITE (028,1008) (TITLE1(IJJ),IJJ=1,8)
+      WRITE (028,1001)
+      WRITE (028,1002) FNVB,FNX,FNYZ,FNXPL,YGRND,FKVAR
+ 1001 FORMAT ('<  NVB   ><   NX   ><  NYZ   ><  NXPL  >< YGROUND>',
+     1 '<  FKVAR >')
+      WRITE (028,1005)
+      WRITE (028,1003) (FXPL(IIJ),IIJ=1,NXPL)
+      WRITE (028,1012)
+      WRITE (028,1006) (XXB(IIJ),IIJ=1,NNNX)
+      DO 250 IIJ=1,NNNX
+      WRITE (028,1007) IIJ
+      WRITE (028,1006) (YYB(IIJ,JJJ),JJJ=1,NNYZ)
+      WRITE (028,1006) (ZZB(IIJ,JJJ),JJJ=1,NNYZ)
+  250 CONTINUE
+      GO TO 400
+C-------------------------------------------------------------------
+C---  CHANNEL 029 - TO PROGRAM PAR_BL (BOUNDARY LAYER)           ---
+  300 IF (NNOUT.NE.29) GO TO 400
+      RE0=2000000.
+      BBB0=1.0
+      FNX0=15.0
+      FNNP=15.0
+      ETAE=6.0
+      FVGP=1.3
+      CFXMIN=0.2
+      FNDX=8.0
+      OPEN ( UNIT=29, FILE=outbl ,STATUS='UNKNOWN')
+      rewind 29
+      WRITE (029,1008) (TITLE1(IJJ),IJJ=1,8)
+      WRITE (029,1009)
+      WRITE (029,1003) FNNP,ETAE,FVGP,CFXMIN,FNVB,FNXPL
+      WRITE (029,1010)
+      WRITE (029,1011) RE0,BBB0,FNX0,FNX,FNYZ,FNDX
+    3 FORMAT(A20)
+ 1009 FORMAT('<   NP   ><  ETAE  ><   VGP  >< CFXMIN >',
+     1    '<   NVB  ><  FNXPL >')
+ 1010 FORMAT ('<   RE   ><   B0   ><  FNX0  ><   FNX  ><  FNYZ  >',
+     1    '<  FNDX  >')
+ 1011 FORMAT (F10.1,6F10.5)
+C------------------------------------------
+ 1012 FORMAT (' X - COORDINATES OF SECTIONS')
+ 1005 FORMAT ('<  NXPLJ ><  NXPLJ ><  NXPLJ ><  NXPLJ ><  NXPLJ >',
+     1'<  NXPLJ ><  NXPLJ ><  NXPLJ >')
+ 1007 FORMAT ('  SECTION',I3)
+ 1002 FORMAT (6F10.5)
+ 1003 FORMAT (8F10.4)
+ 1006 FORMAT (10F7.2)
+ 1008 FORMAT (8A8)
+      WRITE (029,1005)
+      WRITE (029,1003) (FXPL(IIJ),IIJ=1,NXPL)
+      WRITE (029,1012)
+      WRITE (029,1006) (XXB(IIJ),IIJ=1,NNNX)
+      DO 350 IIJ=1,NNNX
+      WRITE (029,1007) IIJ
+      WRITE (029,1006) (YYB(IIJ,JJJ),JJJ=1,NNYZ)
+      WRITE (029,1006) (ZZB(IIJ,JJJ),JJJ=1,NNYZ)
+  350 CONTINUE
+C===================================================================
+  400 RETURN
+      END
+C=================================================
