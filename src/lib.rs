@@ -1,7 +1,13 @@
+mod geom;
+
 #[cfg(test)]
 mod tests {
+    use crate::geom::OldFile;
+
     #[test]
     fn it_works() {
-        assert_eq!(2 + 2, 4);
+        let file = OldFile::read("TU204Z.DAT");
+        println!("{:?}", file)
     }
 }
+
