@@ -1,6 +1,14 @@
-use std::fs::File;
-use std::io::{BufReader, BufRead};
-use std::str::FromStr;
+use std::{
+    fs,
+    fs::File,
+    io::{BufReader, BufRead, Lines},
+    str::FromStr,
+};
+
+
+const STRING_LEN: u8 = 80;
+const FLOAT_LEN: u8 = 7; //эмпирически одно значение float занимает 7 позиций
+
 
 /// ###Формат описания:
 ///  name (pos): value - description, ...
@@ -264,31 +272,57 @@ impl AeflotInput {
                 &file_iterator.next().unwrap().unwrap(), 0, 6)
             );
         }
-        { // блок извлечения nwafor координат из ??? строк
-            let nwafor = self.nwafor.abs();
-            self.wing_coord_percent.reserve(nwafor as usize);
-            //эмпирически одна координата 7 позиций
-            let req_len = 7;
-            // nwafor * req_len - общее количество позиций для nwafor координат
-            // num_of_lines - количество строк, требуемых для записи nwafor координат
-            let num_of_lines = ((nwafor * req_len) as f64 / 80.0).ceil() as isize;
-            let req_len: usize = req_len as usize;
-            for _ in 0..num_of_lines {
-                let line = file_iterator.next().unwrap().unwrap();
-                for (start, end) in (req_len..line.len() + req_len)
-                    .step_by(req_len).enumerate() {
-                    self.wing_coord_percent.push(
-                        str_to_f64(
-                            &mut get_substring(&line, start * req_len, end)
-                        )
-                    );
-                }
-            }
-        }
+        self.wing_coord_percent = read_n_values_f64(&mut file_iterator,
+                                                    self.nwafor.abs() as usize,
+                                                    FLOAT_LEN as usize);
         self.wing_data.reserve(self.nwaf.abs() as usize);
         for _ in 0..self.nwaf {
             self.parse_nwaf_line(file_iterator.next().unwrap().unwrap())
         }
+    }
+
+    pub fn write(&self, path: &str) {
+        fs::write(path, self.to_string()).unwrap();
+    }
+}
+
+impl ToString for AeflotInput {
+    fn to_string(&self) -> String {
+        let mut out_string = String::new();
+        out_string.push_str(&format!("{:^width$}\n", self.name, width=STRING_LEN as usize - 1));
+        out_string.push_str(&format!(
+            "{:>3}{:>3}{:>3}{:>3}{:>3}{:>3}{:>3}{:>3}{:>3}{:>3}{:>3}{:>3}{:>3}{:>3}\n",
+            self.j0, self.j1, self.j2, self.j3, self.j4, self.j5, self.j6, self.nwaf, self.nwafor,
+            self.nfus, self.nradx_1, self.nradx_2, self.nradx_3, self.nradx_4));
+        out_string.push_str(&format!("{:>5}  {:>5}  {:>5}  {:>5}  {:>5}  {:>5}\n",
+            bool_to_str(self.itemax), bool_to_str(self.ground), bool_to_str(self.bet),
+            bool_to_str(self.diver), bool_to_str(self.beloyc), bool_to_str(self.shek)
+        ));
+        if self.itemax { todo!() }
+        if self.j3 != 0 {
+            for value in self.npodor.iter() {
+                out_string.push_str(&format!("{:>3}", value))
+            }
+            out_string.push('\n');
+            for (radx_val, usor_val) in self.npradx.iter().zip(self.npusor.iter()) {
+                out_string.push_str(&format!("{:>3}{:>3}", radx_val, usor_val))
+            }
+            out_string.push('\n')
+        }
+        if self.kfield == 1 {
+            out_string.push_str(&format!("{:>3}{:>3}\n", self.kxf, self.kyf))
+        }
+        if self.j0 == 1 {
+            out_string.push_str(&(format_f64(&self.wing_area) + "\n"))
+        }
+        out_string.push_str(&nwafor_vector_to_string(&self.wing_coord_percent));
+        for coords in self.wing_data.iter() {
+            out_string.push_str(&format!("{}{}{}{}\n",
+            &format_f64(&coords[0]), &format_f64(&coords[1]),
+            &format_f64(&coords[2]), &format_f64(&coords[3])))
+        }
+
+        out_string
     }
 }
 
@@ -388,6 +422,39 @@ impl AeflotInput {
     }
 }
 
+///Читает n значений f64 из итератора
+fn read_n_values_f64(iterator: &mut Lines<BufReader<File>>, n: usize, step: usize) -> Vec<f64> {
+    let num_of_lines = ((n * step) as f64 / STRING_LEN as f64).ceil() as usize;
+    let mut out_vec = Vec::with_capacity(n);
+    for _ in 0..num_of_lines {
+        let line = (iterator.next().unwrap().unwrap());
+        for (start, end) in (0..line.len()).step_by(step)
+            .zip((step..line.len() + step).step_by(step)) {
+            out_vec.push(str_to_f64(&mut get_substring(&line, start, end)))
+        }
+    }
+    out_vec
+}
+
+fn format_f64(value: &f64) -> String {
+    let s = format!("{:.precision$}", value, precision=FLOAT_LEN as usize - 1); // -1 для '.'
+    let s = match s.strip_prefix("0") {
+        Some(result) => String::from(result),
+        None => s
+    };
+String::from(&s[..FLOAT_LEN as usize])
+}
+
+fn nwafor_vector_to_string(data: &[f64]) -> String {
+    let mut out = String::with_capacity(data.len() * FLOAT_LEN as usize + 10);
+    for (value_no, value) in data.iter().enumerate() {
+        out.push_str(&format_f64(value));
+        if value_no != 0 && value_no % 10 == 0 { out.push('\n') }
+    }
+    out.push('\n');
+    out
+}
+
 fn str_to_i8(value: &mut String) -> i8 {
     let number_value = i8::from_str_radix(value.trim(), 10).unwrap();
     value.clear();
@@ -419,4 +486,9 @@ fn get_substring(string: &String, start: usize, end: usize) -> String {
         .take(end - start)
         .collect();
     slice
+}
+
+fn bool_to_str(value: bool) -> String {
+    let out = format!("{}", value);
+    out.to_uppercase()
 }

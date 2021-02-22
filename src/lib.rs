@@ -7,6 +7,7 @@ mod tests {
     #[test]
     fn it_works() {
         let file = AeflotInput::read("TU204Z.DAT");
-        println!("{:?}", file)
+        println!("{:?}", file);
+        file.write("test.txt");
     }
 }
