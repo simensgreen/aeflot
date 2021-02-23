@@ -402,8 +402,9 @@ impl AeflotInput {
 
     fn parse_4_line(&mut self, line: String) -> Result<(), Box<dyn Error>> {
         for (start, end) in (3..line.len()).step_by(3).enumerate() {
-            if start > 8 { continue };
-            self.npodor[start] = str_to_i8(&mut get_substring(&line, start * 3, end))?
+            let mut substring = get_substring(&line, start * 3, end);
+            if start > 8 && !substring.trim().is_empty() { continue };
+            self.npodor[start] = str_to_i8(&mut substring)?
         };
         Ok(())
     }
@@ -412,13 +413,17 @@ impl AeflotInput {
         for (start, end) in (3..line.len()).step_by(3).enumerate() {
             if start / 2 > 9 { continue };
             if start % 2 == 0 {
+                let mut substring = get_substring(&line, start * 3, end);
+                if substring.trim().is_empty() { continue }
                 self.npusor[start / 2] = str_to_isize(
-                    &mut get_substring(&line, (start / 2) * 3, end)
+                    &mut substring
                 )?
             }
             else {
+                let mut substring = get_substring(&line, start * 3, end);
+                if substring.trim().is_empty() { continue }
                 self.npradx[start] = str_to_isize(
-                    &mut get_substring(&line, start * 3, end)
+                    &mut substring
                 )?
             }
         };
@@ -450,7 +455,9 @@ fn read_n_values_f64(iterator: &mut Lines<BufReader<File>>, n: usize, step: usiz
         let line = (iterator.next().unwrap()?);
         for (start, end) in (0..line.len()).step_by(step)
             .zip((step..line.len() + step).step_by(step)) {
-            out_vec.push(str_to_f64(&mut get_substring(&line, start, end))?)
+            let mut substring = get_substring(&line, start, end);
+            if substring.trim().is_empty() { continue }
+            out_vec.push(str_to_f64(&mut substring)?);
         }
     }
     Ok(out_vec)

@@ -38,9 +38,9 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let file = AeflotInput::read("TU204Z.DAT").unwrap();
+        let file = AeflotInput::read("test_files/input/TMK.dat").unwrap();
         println!("{:?}", file);
-        file.write("test.txt");
-        file.write_json("test.json")
+        file.write("test_files/test.txt");
+        file.write_json("test_files/test.json")
     }
 }
