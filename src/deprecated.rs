@@ -4,6 +4,8 @@ use std::{
     io::{BufReader, BufRead, Lines},
     str::FromStr,
 };
+use serde_json;
+use serde::{Serialize, Deserialize};
 
 
 const STRING_LEN: u8 = 80;
@@ -168,7 +170,7 @@ const FLOAT_LEN: u8 = 7; //эмпирически одно значение floa
 ///         z (8..14): координата передней кромки профиля в сечении по размаху крыла.
 ///         y (15..21): координата передней кромки профиля в сечении по размаху крыла.
 ///         b (22..28): длина хорды профиля в сечении по размаху крыла.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AeflotInput {
     //1 строка
     pub name: String,
@@ -203,7 +205,7 @@ impl Default for AeflotInput { fn default() -> Self { Self::new() } }
 impl AeflotInput {
     pub fn new() -> AeflotInput {
         AeflotInput {
-            name: String::new(),
+            name: "".to_string(),
             j0: 0,
             j1: 0,
             j2: 0,
@@ -211,23 +213,23 @@ impl AeflotInput {
             j4: 0,
             j5: 0,
             j6: 0,
-            nwaf: 2,
-            nwafor: 3,
-            nfus: 1,
-            nradx_1: 3,
-            nforx_1: 2,
-            nradx_2: 3,
-            nforx_2: 2,
-            nradx_3: 3,
-            nforx_3: 2,
-            nradx_4: 3,
-            nforx_4: 2,
+            nwaf: 0,
+            nwafor: 0,
+            nfus: 0,
+            nradx_1: 0,
+            nforx_1: 0,
+            nradx_2: 0,
+            nforx_2: 0,
+            nradx_3: 0,
+            nforx_3: 0,
+            nradx_4: 0,
+            nforx_4: 0,
             np: 0,
             kfield: 0,
             nf: 0,
-            nfinor: 3,
+            nfinor: 0,
             ncan: 0,
-            ncanor: 3,
+            ncanor: 0,
             itemax: false,
             ground: false,
             bet: false,
@@ -235,8 +237,8 @@ impl AeflotInput {
             beloyc: false,
             shek: false,
             npodor: [0; 9],
-            npradx: [3; 9],
-            npusor: [2; 9],
+            npradx: [0; 9],
+            npusor: [0; 9],
             kxf: 0,
             kyf: 0,
             wing_area: 0.0,
@@ -283,6 +285,16 @@ impl AeflotInput {
 
     pub fn write(&self, path: &str) {
         fs::write(path, self.to_string()).unwrap();
+    }
+
+    pub fn write_json(&self, path: &str) {
+        fs::write(path, serde_json::to_string_pretty(self).unwrap());
+    }
+
+    pub fn read_json(path: &str) -> AeflotInput {
+        let json_string = fs::read_to_string(path).unwrap();
+        let file: AeflotInput = serde_json::from_str(&json_string).unwrap();
+        file
     }
 }
 
@@ -437,12 +449,16 @@ fn read_n_values_f64(iterator: &mut Lines<BufReader<File>>, n: usize, step: usiz
 }
 
 fn format_f64(value: &f64) -> String {
+    if *value == 0.0 { return String::from("0.     ") }
     let s = format!("{:.precision$}", value, precision=FLOAT_LEN as usize - 1); // -1 для '.'
-    let s = match s.strip_prefix("0") {
-        Some(result) => String::from(result),
-        None => s
+    let mut s = match s.strip_prefix("0") {
+        Some(result) => result,
+        None => s.as_str()
     };
-String::from(&s[..FLOAT_LEN as usize])
+    while s.ends_with("0") {
+        s = s.strip_suffix("0").unwrap()
+    }
+    String::from(&format!("{:<prec$}", s, prec=FLOAT_LEN as usize))
 }
 
 fn nwafor_vector_to_string(data: &[f64]) -> String {
