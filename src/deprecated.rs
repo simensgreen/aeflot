@@ -6,6 +6,7 @@ use std::{
 };
 use serde_json;
 use serde::{Serialize, Deserialize};
+use std::error::Error;
 
 
 const STRING_LEN: u8 = 80;
@@ -247,40 +248,41 @@ impl AeflotInput {
         }
     }
 
-    pub fn read(path: &str) -> AeflotInput {
-        let file = File::open(path).unwrap();
+    pub fn read(path: &str) -> Result<AeflotInput, Box<dyn Error>> {
+        let file = File::open(path)?;
         let mut aeflot_file = AeflotInput::new();
-        aeflot_file.parse(file);
-        aeflot_file
+        aeflot_file.parse(file)?;
+        Ok(aeflot_file)
     }
 
-    fn parse(&mut self, file: File) {
+    fn parse(&mut self, file: File) -> Result<(), Box<dyn Error>>{
         let mut file_iterator = BufReader::new(file).lines();
-        self.name = String::from(file_iterator.next().unwrap().unwrap().trim());
-        self.parse_2_line(file_iterator.next().unwrap().unwrap());
-        self.parse_3_line(file_iterator.next().unwrap().unwrap());
+        self.name = String::from(file_iterator.next().unwrap()?.trim());
+        self.parse_2_line(file_iterator.next().unwrap()?);
+        self.parse_3_line(file_iterator.next().unwrap()?);
         if self.itemax {
-            self.parse_3_1_line(file_iterator.next().unwrap().unwrap())
+            self.parse_3_1_line(file_iterator.next().unwrap()?);
         };
         if self.j3 != 0 {
-            self.parse_4_line(file_iterator.next().unwrap().unwrap());
-            self.parse_5_line(file_iterator.next().unwrap().unwrap());
+            self.parse_4_line(file_iterator.next().unwrap()?)?;
+            self.parse_5_line(file_iterator.next().unwrap()?)?;
         };
         if self.kfield == 1 {
-            self.parse_6_line(file_iterator.next().unwrap().unwrap());
+            self.parse_6_line(file_iterator.next().unwrap()?)?;
         }
         if self.j0 == 1 {
             self.wing_area = str_to_f64(&mut get_substring(
-                &file_iterator.next().unwrap().unwrap(), 0, 6)
-            );
+                &file_iterator.next().unwrap()?, 0, 6)
+            )?;
         }
         self.wing_coord_percent = read_n_values_f64(&mut file_iterator,
                                                     self.nwafor.abs() as usize,
-                                                    FLOAT_LEN as usize);
+                                                    FLOAT_LEN as usize)?;
         self.wing_data.reserve(self.nwaf.abs() as usize);
         for _ in 0..self.nwaf {
-            self.parse_nwaf_line(file_iterator.next().unwrap().unwrap())
-        }
+            self.parse_nwaf_line(file_iterator.next().unwrap()?)?
+        };
+        Ok(())
     }
 
     pub fn write(&self, path: &str) {
@@ -291,10 +293,10 @@ impl AeflotInput {
         fs::write(path, serde_json::to_string_pretty(self).unwrap());
     }
 
-    pub fn read_json(path: &str) -> AeflotInput {
-        let json_string = fs::read_to_string(path).unwrap();
-        let file: AeflotInput = serde_json::from_str(&json_string).unwrap();
-        file
+    pub fn read_json(path: &str) -> Result<AeflotInput, Box<dyn Error>> {
+        let json_string = fs::read_to_string(path)?;
+        let file: AeflotInput = serde_json::from_str(&json_string)?;
+        Ok(file)
     }
 }
 
@@ -340,39 +342,40 @@ impl ToString for AeflotInput {
 
 //Парсеры для частных случаев
 impl AeflotInput {
-    fn parse_2_line(&mut self, line: String) {
+    fn parse_2_line(&mut self, line: String) -> Result<(), Box<dyn Error>> {
         let mut value = String::with_capacity(10);
         for (char_no, char) in line.chars().enumerate() {
             value.push(char);
             match char_no {
                 //смещение всех номеров позиций влево на 1 из-за нумерации с 0
-                2 => { self.j0 = str_to_i8(&mut value) },
-                5 => { self.j1 = str_to_i8(&mut value) },
-                8 => { self.j2 = str_to_i8(&mut value) },
-                11 => { self.j3 = str_to_i8(&mut value) },
-                14 => { self.j4 = str_to_i8(&mut value) },
-                17 => { self.j5 = str_to_i8(&mut value) },
-                20 => { self.j6 = str_to_i8(&mut value) },
-                23 => { self.nwaf = str_to_isize(&mut value) },
-                26 => { self.nwafor = str_to_isize(&mut value) },
-                29 => { self.nfus = str_to_i8(&mut value) },
-                32 => { self.nradx_1 = str_to_isize(&mut value) },
-                35 => { self.nforx_1 = str_to_isize(&mut value) },
-                38 => { self.nradx_2 = str_to_isize(&mut value) },
-                41 => { self.nforx_2 = str_to_isize(&mut value) },
-                44 => { self.nradx_3 = str_to_isize(&mut value) },
-                47 => { self.nforx_3 = str_to_isize(&mut value) },
-                50 => { self.nradx_4 = str_to_isize(&mut value) },
-                53 => { self.nforx_4 = str_to_isize(&mut value) },
-                56 => { self.np = str_to_i8(&mut value) },
-                59 => { self.kfield = str_to_i8(&mut value) },
-                65 => { self.nfinor = str_to_isize(&mut value) },
-                62 => { self.nf = str_to_i8(&mut value) },
-                68 => { self.ncan = str_to_i8(&mut value) },
-                71 => { self.ncanor = str_to_isize(&mut value) },
+                2 => { self.j0 = str_to_i8(&mut value)? },
+                5 => { self.j1 = str_to_i8(&mut value)? },
+                8 => { self.j2 = str_to_i8(&mut value)? },
+                11 => { self.j3 = str_to_i8(&mut value)? },
+                14 => { self.j4 = str_to_i8(&mut value)? },
+                17 => { self.j5 = str_to_i8(&mut value)? },
+                20 => { self.j6 = str_to_i8(&mut value)? },
+                23 => { self.nwaf = str_to_isize(&mut value)? },
+                26 => { self.nwafor = str_to_isize(&mut value)? },
+                29 => { self.nfus = str_to_i8(&mut value)? },
+                32 => { self.nradx_1 = str_to_isize(&mut value)? },
+                35 => { self.nforx_1 = str_to_isize(&mut value)? },
+                38 => { self.nradx_2 = str_to_isize(&mut value)? },
+                41 => { self.nforx_2 = str_to_isize(&mut value)? },
+                44 => { self.nradx_3 = str_to_isize(&mut value)? },
+                47 => { self.nforx_3 = str_to_isize(&mut value)? },
+                50 => { self.nradx_4 = str_to_isize(&mut value)? },
+                53 => { self.nforx_4 = str_to_isize(&mut value)? },
+                56 => { self.np = str_to_i8(&mut value)? },
+                59 => { self.kfield = str_to_i8(&mut value)? },
+                65 => { self.nfinor = str_to_isize(&mut value)? },
+                62 => { self.nf = str_to_i8(&mut value)? },
+                68 => { self.ncan = str_to_i8(&mut value)? },
+                71 => { self.ncanor = str_to_isize(&mut value)? },
                 _ => { continue }
             }
-        }
+        };
+        Ok(())
     }
 
     fn parse_3_line(&mut self, line: String) {
@@ -392,60 +395,65 @@ impl AeflotInput {
         }
     }
 
-    fn parse_3_1_line(&mut self, line: String) {
-        todo!()
+    fn parse_3_1_line(&mut self, line: String) -> Result<(), Box<dyn Error>>{
+        todo!();
+        Ok(())
     }
 
-    fn parse_4_line(&mut self, line: String) {
+    fn parse_4_line(&mut self, line: String) -> Result<(), Box<dyn Error>> {
         for (start, end) in (3..line.len()).step_by(3).enumerate() {
             if start > 8 { continue };
-            self.npodor[start] = str_to_i8(&mut get_substring(&line, start * 3, end))
-        }
+            self.npodor[start] = str_to_i8(&mut get_substring(&line, start * 3, end))?
+        };
+        Ok(())
     }
 
-    fn parse_5_line(&mut self, line: String) {
+    fn parse_5_line(&mut self, line: String) -> Result<(), Box<dyn Error>> {
         for (start, end) in (3..line.len()).step_by(3).enumerate() {
             if start / 2 > 9 { continue };
             if start % 2 == 0 {
                 self.npusor[start / 2] = str_to_isize(
                     &mut get_substring(&line, (start / 2) * 3, end)
-                )
+                )?
             }
             else {
                 self.npradx[start] = str_to_isize(
                     &mut get_substring(&line, start * 3, end)
-                )
+                )?
             }
-        }
+        };
+        Ok(())
     }
 
-    fn parse_6_line(&mut self, line: String) {
-        self.kxf = str_to_i8(&mut get_substring(&line, 0, 2));
-        self.kyf = str_to_i8(&mut get_substring(&line, 3, 5));
+    fn parse_6_line(&mut self, line: String) -> Result<(), Box<dyn Error>> {
+        self.kxf = str_to_i8(&mut get_substring(&line, 0, 2))?;
+        self.kyf = str_to_i8(&mut get_substring(&line, 3, 5))?;
+        Ok(())
     }
 
-    fn parse_nwaf_line(&mut self, line: String) {
+    fn parse_nwaf_line(&mut self, line: String) -> Result<(), Box<dyn Error>>{
         let mut coords: [f64; 4] = [0.0, 0.0, 0.0, 0.0];
-        coords[0] = str_to_f64(&mut get_substring(&line, 0, 6));
-        coords[1] = str_to_f64(&mut get_substring(&line, 7, 13));
-        coords[2] = str_to_f64(&mut get_substring(&line, 14, 20));
-        coords[3] = str_to_f64(&mut get_substring(&line, 21, 27));
-        self.wing_data.push(coords)
+        coords[0] = str_to_f64(&mut get_substring(&line, 0, 6))?;
+        coords[1] = str_to_f64(&mut get_substring(&line, 7, 13))?;
+        coords[2] = str_to_f64(&mut get_substring(&line, 14, 20))?;
+        coords[3] = str_to_f64(&mut get_substring(&line, 21, 27))?;
+        self.wing_data.push(coords);
+        Ok(())
     }
 }
 
 ///Читает n значений f64 из итератора
-fn read_n_values_f64(iterator: &mut Lines<BufReader<File>>, n: usize, step: usize) -> Vec<f64> {
+fn read_n_values_f64(iterator: &mut Lines<BufReader<File>>, n: usize, step: usize) -> Result<Vec<f64>, Box<dyn Error>> {
     let num_of_lines = ((n * step) as f64 / STRING_LEN as f64).ceil() as usize;
     let mut out_vec = Vec::with_capacity(n);
     for _ in 0..num_of_lines {
-        let line = (iterator.next().unwrap().unwrap());
+        let line = (iterator.next().unwrap()?);
         for (start, end) in (0..line.len()).step_by(step)
             .zip((step..line.len() + step).step_by(step)) {
-            out_vec.push(str_to_f64(&mut get_substring(&line, start, end)))
+            out_vec.push(str_to_f64(&mut get_substring(&line, start, end))?)
         }
     }
-    out_vec
+    Ok(out_vec)
 }
 
 fn format_f64(value: &f64) -> String {
@@ -471,16 +479,16 @@ fn nwafor_vector_to_string(data: &[f64]) -> String {
     out
 }
 
-fn str_to_i8(value: &mut String) -> i8 {
-    let number_value = i8::from_str_radix(value.trim(), 10).unwrap();
+fn str_to_i8(value: &mut String) -> Result<i8, Box<dyn Error>> {
+    let number_value = i8::from_str_radix(value.trim(), 10)?;
     value.clear();
-    number_value
+    Ok(number_value)
 }
 
-fn str_to_isize(value: &mut String) -> isize {
-    let number_value = isize::from_str_radix(value.trim(), 10).unwrap();
+fn str_to_isize(value: &mut String) -> Result<isize, Box<dyn Error>> {
+    let number_value = isize::from_str_radix(value.trim(), 10)?;
     value.clear();
-    number_value
+    Ok(number_value)
 }
 
 fn str_to_bool(value: &mut String) -> bool {
@@ -489,10 +497,10 @@ fn str_to_bool(value: &mut String) -> bool {
     out
 }
 
-fn str_to_f64(value: &mut String) -> f64 {
-    let out = f64::from_str(value.trim()).unwrap();
+fn str_to_f64(value: &mut String) -> Result<f64, Box<dyn Error>> {
+    let out = f64::from_str(value.trim())?;
     value.clear();
-    out
+    Ok(out)
 }
 
 fn get_substring(string: &String, start: usize, end: usize) -> String {

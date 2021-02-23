@@ -1,21 +1,30 @@
 mod deprecated;
 use crate::deprecated::AeflotInput;
+use std::error::Error;
 
 
-pub fn convert_aeflot_dep_2_json(path: &str) {
-    let file = AeflotInput::read(path);
+pub fn convert_aeflot_dep_2_json(path: &str) -> Result<String, Box<dyn Error>> {
+    let file = AeflotInput::read(path)?;
     let path = String::from(path);
-    let mut path: String = path.chars().into_iter().take(path.rfind('.').unwrap()).collect();
+    let mut path: String = path.chars()
+        .into_iter()
+        .take(path.rfind('.').expect("unknown file extension"))
+        .collect();
     path.push_str(".json");
-    file.write_json(&path)
+    file.write_json(&path);
+    Ok(path)
 }
 
-pub fn convert_json_2_aeflot_dep(path: &str) {
-    let file = AeflotInput::read_json(path);
+pub fn convert_json_2_aeflot_dep(path: &str)  -> Result<String, Box<dyn Error>>{
+    let file = AeflotInput::read_json(path)?;
     let path = String::from(path);
-    let mut path: String = path.chars().into_iter().take(path.rfind('.').unwrap()).collect();
+    let mut path: String = path.chars()
+        .into_iter()
+        .take(path.rfind('.').expect("unknown file extension"))
+        .collect();
     path.push_str(".DAT");
-    file.write(&path)
+    file.write(&path);
+    Ok(path)
 }
 
 pub fn create_json_template(path: &str) {
@@ -29,7 +38,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let file = AeflotInput::read("TU204Z.DAT");
+        let file = AeflotInput::read("TU204Z.DAT").unwrap();
         println!("{:?}", file);
         file.write("test.txt");
         file.write_json("test.json")
