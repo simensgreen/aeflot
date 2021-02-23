@@ -262,10 +262,10 @@ impl AeflotInput {
     fn parse(&mut self, file: File) -> Result<(), Box<dyn Error>>{
         let mut file_iterator = BufReader::new(file).lines();
         self.name = String::from(file_iterator.next().unwrap()?.trim());
-        self.parse_2_line(file_iterator.next().unwrap()?);
+        self.parse_2_line(file_iterator.next().unwrap()?)?;
         self.parse_3_line(file_iterator.next().unwrap()?);
         if self.itemax {
-            self.parse_3_1_line(file_iterator.next().unwrap()?);
+            self.parse_3_1_line(file_iterator.next().unwrap()?)?;
         };
         if self.j3 != 0 {
             self.parse_4_line(file_iterator.next().unwrap()?)?;
@@ -289,12 +289,14 @@ impl AeflotInput {
         Ok(())
     }
 
-    pub fn write(&self, path: &str) {
-        fs::write(path, self.to_string()).unwrap();
+    pub fn write(&self, path: &str) -> Result<(), Box<dyn Error>> {
+        fs::write(path, self.to_string())?;
+        Ok(())
     }
 
-    pub fn write_json(&self, path: &str) {
-        fs::write(path, serde_json::to_string_pretty(self).unwrap());
+    pub fn write_json(&self, path: &str) -> Result<(), Box<dyn Error>>{
+        fs::write(path, serde_json::to_string_pretty(self).unwrap())?;
+        Ok(())
     }
 
     pub fn read_json(path: &str) -> Result<AeflotInput, Box<dyn Error>> {
@@ -457,7 +459,7 @@ fn read_n_values_f64(iterator: &mut Lines<BufReader<File>>, n: usize, step: usiz
     let num_of_lines = ((n * step) as f64 / STRING_LEN as f64).ceil() as usize;
     let mut out_vec = Vec::with_capacity(n);
     for _ in 0..num_of_lines {
-        let line = (iterator.next().unwrap()?);
+        let line = iterator.next().unwrap()?;
         for (start, end) in (0..line.len()).step_by(step)
             .zip((step..line.len() + step).step_by(step)) {
             let mut substring = get_substring(&line, start, end);
