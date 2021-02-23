@@ -186,14 +186,14 @@ pub struct AeflotInput {
     pub diver: bool, pub beloyc: bool, pub shek: bool,
     //3_1 строка
     //4 строка
-    pub npodor: [i8; 9],
+    pub npodor: Option<[i8; 9]>,
     //5 строка
-    pub npradx: [isize; 9],
-    pub npusor: [isize; 9],
+    pub npradx: Option<[isize; 9]>,
+    pub npusor: Option<[isize; 9]>,
     //6 строка
-    pub kxf: i8, pub kyf: i8,
+    pub kxf: Option<i8>, pub kyf: Option<i8>,
     //7 строка
-    pub wing_area: f64,
+    pub wing_area: Option<f64>,
     //8.. строка и, возможно, больше
     pub wing_coord_percent: Vec<f64>,
     //следующая группа nwaf строк
@@ -201,10 +201,8 @@ pub struct AeflotInput {
 
 }
 
-impl Default for AeflotInput { fn default() -> Self { Self::new() } }
-
-impl AeflotInput {
-    pub fn new() -> AeflotInput {
+impl Default for AeflotInput {
+    fn default() -> Self {
         AeflotInput {
             name: "".to_string(),
             j0: 0,
@@ -237,15 +235,21 @@ impl AeflotInput {
             diver: false,
             beloyc: false,
             shek: false,
-            npodor: [0; 9],
-            npradx: [0; 9],
-            npusor: [0; 9],
-            kxf: 0,
-            kyf: 0,
-            wing_area: 0.0,
+            npodor: None,
+            npradx: None,
+            npusor: None,
+            kxf: None,
+            kyf: None,
+            wing_area: None,
             wing_coord_percent: vec![],
             wing_data: vec![]
         }
+    }
+}
+
+impl AeflotInput {
+    pub fn new() -> AeflotInput {
+        AeflotInput::default()
     }
 
     pub fn read(path: &str) -> Result<AeflotInput, Box<dyn Error>> {
@@ -271,9 +275,9 @@ impl AeflotInput {
             self.parse_6_line(file_iterator.next().unwrap()?)?;
         }
         if self.j0 == 1 {
-            self.wing_area = str_to_f64(&mut get_substring(
+            self.wing_area = Some(str_to_f64(&mut get_substring(
                 &file_iterator.next().unwrap()?, 0, 6)
-            )?;
+            )?);
         }
         self.wing_coord_percent = read_n_values_f64(&mut file_iterator,
                                                     self.nwafor.abs() as usize,
@@ -314,20 +318,21 @@ impl ToString for AeflotInput {
         ));
         if self.itemax { todo!() }
         if self.j3 != 0 {
-            for value in self.npodor.iter() {
+            for value in self.npodor.unwrap().iter() {
                 out_string.push_str(&format!("{:>3}", value))
             }
             out_string.push('\n');
-            for (radx_val, usor_val) in self.npradx.iter().zip(self.npusor.iter()) {
+            for (radx_val, usor_val) in self.npradx.unwrap()
+                .iter().zip(self.npusor.unwrap().iter()) {
                 out_string.push_str(&format!("{:>3}{:>3}", radx_val, usor_val))
             }
             out_string.push('\n')
         }
         if self.kfield == 1 {
-            out_string.push_str(&format!("{:>3}{:>3}\n", self.kxf, self.kyf))
+            out_string.push_str(&format!("{:>3}{:>3}\n", self.kxf.unwrap(), self.kyf.unwrap()))
         }
         if self.j0 == 1 {
-            out_string.push_str(&(format_f64(&self.wing_area) + "\n"))
+            out_string.push_str(&(format_f64(&self.wing_area.unwrap()) + "\n"))
         }
         out_string.push_str(&nwafor_vector_to_string(&self.wing_coord_percent));
         for coords in self.wing_data.iter() {
@@ -404,7 +409,7 @@ impl AeflotInput {
         for (start, end) in (3..line.len()).step_by(3).enumerate() {
             let mut substring = get_substring(&line, start * 3, end);
             if start > 8 && !substring.trim().is_empty() { continue };
-            self.npodor[start] = str_to_i8(&mut substring)?
+            self.npodor.unwrap()[start] = str_to_i8(&mut substring)?
         };
         Ok(())
     }
@@ -415,14 +420,14 @@ impl AeflotInput {
             if start % 2 == 0 {
                 let mut substring = get_substring(&line, start * 3, end);
                 if substring.trim().is_empty() { continue }
-                self.npusor[start / 2] = str_to_isize(
+                self.npusor.unwrap()[start / 2] = str_to_isize(
                     &mut substring
                 )?
             }
             else {
                 let mut substring = get_substring(&line, start * 3, end);
                 if substring.trim().is_empty() { continue }
-                self.npradx[start] = str_to_isize(
+                self.npradx.unwrap()[start] = str_to_isize(
                     &mut substring
                 )?
             }
@@ -431,8 +436,8 @@ impl AeflotInput {
     }
 
     fn parse_6_line(&mut self, line: String) -> Result<(), Box<dyn Error>> {
-        self.kxf = str_to_i8(&mut get_substring(&line, 0, 2))?;
-        self.kyf = str_to_i8(&mut get_substring(&line, 3, 5))?;
+        self.kxf = Some(str_to_i8(&mut get_substring(&line, 0, 2))?);
+        self.kyf = Some(str_to_i8(&mut get_substring(&line, 3, 5))?);
         Ok(())
     }
 
