@@ -7,6 +7,7 @@ use std::{
 use serde_json;
 use serde::{Serialize, Deserialize};
 use std::error::Error;
+use std::iter::Peekable;
 
 
 const STRING_LEN: u8 = 80;
@@ -263,7 +264,7 @@ impl AeflotInput {
     }
 
     fn parse(&mut self, file: File) -> Result<(), Box<dyn Error>>{
-        let mut file_iterator = BufReader::new(file).lines();
+        let mut file_iterator = BufReader::new(file).lines().peekable();
         self.name = String::from(file_iterator.next().unwrap()?.trim());
         self.parse_2_line(file_iterator.next().unwrap()?)?;
         self.parse_3_line(file_iterator.next().unwrap()?);
@@ -466,7 +467,7 @@ impl AeflotInput {
 }
 
 ///Читает n значений f64 из итератора
-fn read_n_values_f64(iterator: &mut Lines<BufReader<File>>, mut n: usize, step: usize) -> Result<Vec<f64>, Box<dyn Error>> {
+fn read_n_values_f64(iterator: &mut Peekable<Lines<BufReader<File>>>, mut n: usize, step: usize) -> Result<Vec<f64>, Box<dyn Error>> {
     let mut out_vec = Vec::with_capacity(n);
     while n != 0 {
         let line = iterator.next().unwrap()?;
