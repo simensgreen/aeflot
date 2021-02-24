@@ -197,7 +197,9 @@ pub struct AeflotInput {
     //8.. строка и, возможно, больше
     pub wing_coord_percent: Vec<f64>,
     //следующая группа nwaf строк
-    pub wing_data: Vec<[f64; 4]>
+    pub wing_data: Vec<[f64; 4]>,
+    //крутка крыла
+    pub wing_twist: Option<Vec<f64>>
 
 }
 
@@ -242,7 +244,8 @@ impl Default for AeflotInput {
             kyf: None,
             wing_area: None,
             wing_coord_percent: vec![],
-            wing_data: vec![]
+            wing_data: vec![],
+            wing_twist: None
         }
     }
 }
@@ -286,6 +289,11 @@ impl AeflotInput {
         for _ in 0..self.nwaf {
             self.parse_nwaf_line(file_iterator.next().unwrap()?)?
         };
+        if self.j1 != -1 {
+            self.wing_twist = Some(read_n_values_f64(&mut file_iterator,
+                                                     self.nwaf.abs() as usize,
+                                                     FLOAT_LEN as usize)?);
+        }
         Ok(())
     }
 
@@ -341,6 +349,9 @@ impl ToString for AeflotInput {
             out_string.push_str(&format!("{}{}{}{}\n",
             &format_f64(&coords[0]), &format_f64(&coords[1]),
             &format_f64(&coords[2]), &format_f64(&coords[3])))
+        }
+        if self.j1 != -1 {
+            out_string.push_str(&nwafor_vector_to_string(self.wing_twist.as_ref().unwrap()))
         }
 
         out_string
