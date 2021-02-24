@@ -455,16 +455,16 @@ impl AeflotInput {
 }
 
 ///Читает n значений f64 из итератора
-fn read_n_values_f64(iterator: &mut Lines<BufReader<File>>, n: usize, step: usize) -> Result<Vec<f64>, Box<dyn Error>> {
-    let num_of_lines = ((n * step) as f64 / STRING_LEN as f64).ceil() as usize;
+fn read_n_values_f64(iterator: &mut Lines<BufReader<File>>, mut n: usize, step: usize) -> Result<Vec<f64>, Box<dyn Error>> {
     let mut out_vec = Vec::with_capacity(n);
-    for _ in 0..num_of_lines {
+    while n != 0 {
         let line = iterator.next().unwrap()?;
         for (start, end) in (0..line.len()).step_by(step)
             .zip((step..line.len() + step).step_by(step)) {
             let mut substring = get_substring(&line, start, end);
             if substring.trim().is_empty() { continue }
             out_vec.push(str_to_f64(&mut substring)?);
+            n -= 1;
         }
     }
     Ok(out_vec)
@@ -485,9 +485,10 @@ fn format_f64(value: &f64) -> String {
 
 fn nwafor_vector_to_string(data: &[f64]) -> String {
     let mut out = String::with_capacity(data.len() * FLOAT_LEN as usize + 10);
+    let values_per_line = (STRING_LEN / FLOAT_LEN) as usize;
     for (value_no, value) in data.iter().enumerate() {
         out.push_str(&format_f64(value));
-        if value_no != 0 && value_no % 10 == 0 { out.push('\n') }
+        if (value_no + 1) % values_per_line == 0 { out.push('\n') }
     }
     out.push('\n');
     out
