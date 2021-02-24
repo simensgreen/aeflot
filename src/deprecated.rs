@@ -200,7 +200,9 @@ pub struct AeflotInput {
     //следующая группа nwaf строк
     pub wing_data: Vec<[f64; 4]>,
     //крутка крыла
-    pub wing_twist: Option<Vec<f64>>
+    pub wing_twist: Option<Vec<f64>>,
+    //неизвестные nwafor серии
+    pub nwafor_series: Vec<Vec<f64>>,
 
 }
 
@@ -246,7 +248,8 @@ impl Default for AeflotInput {
             wing_area: None,
             wing_coord_percent: vec![],
             wing_data: vec![],
-            wing_twist: None
+            wing_twist: None,
+            nwafor_series: vec![]
         }
     }
 }
@@ -294,6 +297,13 @@ impl AeflotInput {
             self.wing_twist = Some(read_n_values_f64(&mut file_iterator,
                                                      self.nwaf.abs() as usize,
                                                      FLOAT_LEN as usize)?);
+        }
+        println!("{}", file_iterator.peek().unwrap().as_ref().unwrap());
+        println!("{}", file_iterator.peek().unwrap().as_ref().unwrap().contains("variant"));
+        while !file_iterator.peek().unwrap().as_ref().unwrap().contains("variant") {
+            self.nwafor_series.push(read_n_values_f64(&mut file_iterator,
+                                                      self.nwafor.abs() as usize,
+                                                      FLOAT_LEN as usize)?)
         }
         Ok(())
     }
@@ -353,6 +363,9 @@ impl ToString for AeflotInput {
         }
         if self.j1 != -1 {
             out_string.push_str(&nwafor_vector_to_string(self.wing_twist.as_ref().unwrap()))
+        }
+        for series in self.nwafor_series.iter() {
+            out_string.push_str(&nwafor_vector_to_string(series))
         }
 
         out_string
