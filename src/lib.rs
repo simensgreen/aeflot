@@ -1,6 +1,7 @@
 mod deprecated;
 use crate::deprecated::AeflotInput;
 use std::error::Error;
+use std::fs;
 
 
 pub fn convert_aeflot_dep_2_json(path: &str) -> Result<String, Box<dyn Error>> {
@@ -15,7 +16,7 @@ pub fn convert_aeflot_dep_2_json(path: &str) -> Result<String, Box<dyn Error>> {
     Ok(path)
 }
 
-pub fn convert_json_2_aeflot_dep(path: &str)  -> Result<String, Box<dyn Error>>{
+pub fn convert_json_2_aeflot_dep(path: &str) -> Result<String, Box<dyn Error>> {
     let file = AeflotInput::read_json(path)?;
     let path = String::from(path);
     let mut path: String = path.chars()
@@ -25,6 +26,18 @@ pub fn convert_json_2_aeflot_dep(path: &str)  -> Result<String, Box<dyn Error>>{
     path.push_str(".DAT");
     file.write(&path)?;
     Ok(path)
+}
+
+pub fn convert_json_s_2_aeflot_dep_s(string: &str) -> Result<String, Box<dyn Error>> {
+    let file = AeflotInput::from_json_string(&string)?;
+    Ok(file.to_string())
+}
+
+pub fn convert_aeflot_dep_s_2_json_s(string: &str) -> Result<String, Box<dyn Error>> {
+    fs::write("aeflot.tmp", string)?;
+    let file = AeflotInput::read("aeflot.tmp")?;
+    fs::remove_file("aeflot.tmp")?;
+    Ok(file.to_json_string())
 }
 
 pub fn create_json_template(path: &str) -> Result<(), Box<dyn Error>> {

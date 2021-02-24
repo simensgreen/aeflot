@@ -298,8 +298,6 @@ impl AeflotInput {
                                                      self.nwaf.abs() as usize,
                                                      FLOAT_LEN as usize)?);
         }
-        println!("{}", file_iterator.peek().unwrap().as_ref().unwrap());
-        println!("{}", file_iterator.peek().unwrap().as_ref().unwrap().contains("variant"));
         while !file_iterator.peek().unwrap().as_ref().unwrap().contains("variant") {
             self.nwafor_series.push(read_n_values_f64(&mut file_iterator,
                                                       self.nwafor.abs() as usize,
@@ -308,19 +306,28 @@ impl AeflotInput {
         Ok(())
     }
 
+    pub fn to_json_string(&self) -> String {
+        serde_json::to_string_pretty(self).unwrap()
+    }
+
+    pub fn from_json_string(string: &str) -> Result<AeflotInput, Box<dyn Error>> {
+        let result = serde_json::from_str(string)?;
+        Ok(result)
+    }
+
     pub fn write(&self, path: &str) -> Result<(), Box<dyn Error>> {
         fs::write(path, self.to_string())?;
         Ok(())
     }
 
     pub fn write_json(&self, path: &str) -> Result<(), Box<dyn Error>>{
-        fs::write(path, serde_json::to_string_pretty(self).unwrap())?;
+        fs::write(path, self.to_json_string())?;
         Ok(())
     }
 
     pub fn read_json(path: &str) -> Result<AeflotInput, Box<dyn Error>> {
         let json_string = fs::read_to_string(path)?;
-        let file: AeflotInput = serde_json::from_str(&json_string)?;
+        let file: AeflotInput = AeflotInput::from_json_string(&json_string)?;
         Ok(file)
     }
 }
