@@ -371,6 +371,7 @@ impl ToString for AeflotInput {
         for series in self.nwafor_series.iter() {
             out_string.push_str(&nwafor_vector_to_string(series))
         }
+        out_string.push_str(&format!("{:^width$}:", "variant", width=STRING_LEN as usize));
 
         out_string
     }
