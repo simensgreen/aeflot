@@ -287,21 +287,18 @@ impl AeflotInput {
             )?);
         }
         self.wing_coord_percent = read_n_values_f64(&mut file_iterator,
-                                                    self.nwafor.abs() as usize,
-                                                    FLOAT_LEN as usize)?;
+                                                    self.nwafor.abs() as usize)?;
         self.wing_data.reserve(self.nwaf.abs() as usize);
         for _ in 0..self.nwaf {
             self.parse_nwaf_line(file_iterator.next().unwrap()?)?
         };
         if self.j1 != -1 {
             self.wing_twist = Some(read_n_values_f64(&mut file_iterator,
-                                                     self.nwaf.abs() as usize,
-                                                     FLOAT_LEN as usize)?);
+                                                     self.nwaf.abs() as usize)?);
         }
         while !file_iterator.peek().unwrap().as_ref().unwrap().contains("variant") {
             self.nwafor_series.push(read_n_values_f64(&mut file_iterator,
-                                                      self.nwafor.abs() as usize,
-                                                      FLOAT_LEN as usize)?)
+                                                      self.nwafor.abs() as usize)?)
         }
         Ok(())
     }
@@ -487,7 +484,9 @@ impl AeflotInput {
 }
 
 ///Читает n значений f64 из итератора
-fn read_n_values_f64(iterator: &mut Peekable<Lines<BufReader<File>>>, mut n: usize, step: usize) -> Result<Vec<f64>, Box<dyn Error>> {
+fn read_n_values_f64(iterator: &mut Peekable<Lines<BufReader<File>>>, mut n: usize)
+    -> Result<Vec<f64>, Box<dyn Error>> {
+    let step = FLOAT_LEN as usize;
     let mut out_vec = Vec::with_capacity(n);
     while n != 0 {
         let line = iterator.next().unwrap()?;
